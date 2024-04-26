@@ -1,0 +1,23 @@
+{
+  "name": "circuitscan-lambda-circom",
+  "version": "0.0.1",
+  "description": "Circom Compiler packaged for lambda that publishes prover and verifier to NPM",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node test/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/circuitscan/circom-lambda.git"
+  },
+  "author": "numtel <ben@latenightsketches.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/circuitscan/circom-lambda/issues"
+  },
+  "homepage": "https://github.com/circuitscan/circom-lambda#readme",
+  "dependencies": {
+    "circomkit-numtel": "^0.0.25"
+  }
+}

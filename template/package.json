@@ -1,0 +1,23 @@
+{
+  "name": "%%package_name%%",
+  "version": "1.0.0",
+  "description": "Auto-generated snarkjs artifacts",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "circomkit compile %%circuit_name%%"
+  },
+  "author": "Circuitscan",
+  "license": "MIT",
+  "dependencies": {
+    "snarkjs": "^0.7.3"
+  },
+  "devDependencies": {
+    "circomkit": "^0.0.25"
+  },
+  "resolutions": {
+    "web-worker": "1.2.0"
+  }
+}
+
