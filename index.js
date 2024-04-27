@@ -6,8 +6,11 @@ import {exec} from 'node:child_process';
 
 // TODO: Using customized version until next release with circomPath config
 import {Circomkit} from 'circomkit-numtel';
+import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
 
-const BUILD_NAME = 'verify_circuit';
+
+
+export const BUILD_NAME = 'verify_circuit';
 const HARDHAT_IMPORT = 'import "hardhat/console.sol";';
 
 export async function handler(event) {
@@ -43,11 +46,18 @@ async function build(event) {
   const cfgPath = join(mkdtempSync(join(tmpdir(), 'cfg-')), '.npmrc');
   writeFileSync(cfgPath, `//registry.npmjs.org/:_authToken=${authToken}`);
 
+  const circuitName = event.payload.circuit.template.toLowerCase();
+
+  const pkgName = `snarkjs-prover-${circuitName}-${uniqueNamesGenerator({
+    dictionaries: [adjectives, colors, animals],
+    separator: '-',
+  })}`;
+
   const dirPtau = tmpdir();
-  const dirPkg = mkdtempSync(join(tmpdir(), 'package-'));
-  console.log(dirPkg);
+  const dirPkg = join(tmpdir(), pkgName);
   const dirCircuits = join(dirPkg, 'circuits');
   const dirBuild = join(dirPkg, 'build');
+  mkdirSync(dirPkg);
   mkdirSync(dirCircuits);
   mkdirSync(dirBuild);
 
@@ -91,8 +101,6 @@ async function build(event) {
 
   const circomkit = new Circomkit(config);
 
-  const circuitName = event.payload.circuit.template.toLowerCase();
-
   // Export to package
   writeFileSync(join(dirPkg, 'circuits.json'), JSON.stringify({
     [circuitName]: event.payload.circuit,
@@ -115,8 +123,6 @@ async function build(event) {
   const pkeyPath = join('build', BUILD_NAME, event.payload.protocol + '_pkey.zkey');
   const vkeyPath = join('build', BUILD_NAME, event.payload.protocol + '_vkey.json');
   const vkey = readFileSync(join(dirPkg, vkeyPath), {encoding: 'utf8'});
-
-  const pkgName = `snarkjs-prover-${circuitName}-${randHex()}`;
 
   // Include Javascript to generate and verify proofs
   const thisdir = dirname(fileURLToPath(import.meta.url));

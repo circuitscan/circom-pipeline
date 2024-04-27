@@ -2,3 +2,7 @@
 node_modules
 
 *.swp
+
+# Hardhat files
+/cache
+/artifacts
