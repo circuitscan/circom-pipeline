@@ -4,11 +4,8 @@ import {dirname, join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {exec} from 'node:child_process';
 
-// TODO: Using customized version until next release with circomPath config
-import {Circomkit} from 'circomkit-numtel';
+import {Circomkit} from 'circomkit';
 import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
-
-
 
 export const BUILD_NAME = 'verify_circuit';
 const HARDHAT_IMPORT = 'import "hardhat/console.sol";';

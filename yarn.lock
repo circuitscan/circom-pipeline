@@ -1531,10 +1531,10 @@ circom_tester@^0.0.19:
     tmp-promise "^3.0.3"
     util "^0.12.4"
 
-circomkit-numtel@^0.0.25:
-  version "0.0.25"
-  resolved "https://registry.yarnpkg.com/circomkit-numtel/-/circomkit-numtel-0.0.25.tgz#1ccabf51b400f255931613238730e3c46fd989cc"
-  integrity sha512-uzI89BqY3Hm2LRfqXw2m4OtneFrsaSaIZy0fTW4gg7lygG33gBKCz7plxmbfnXE3l3eeywTjSmootbvVPKebVg==
+circomkit@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/circomkit/-/circomkit-0.1.0.tgz#f44cf86d46b3a3dff5a4958b6450f494d6fa9970"
+  integrity sha512-Mnc9IuOoaN7FitfURvbg2Q5j62S7/zQl6l18u5dcIhZg3Ot9MZYLiGIotCaF1Gfp/vAUKnvO2lnS3Xc1TdTISA==
   dependencies:
     chai "^4.3.7"
     circom_tester "^0.0.19"
