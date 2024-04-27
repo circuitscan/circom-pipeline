@@ -5,6 +5,7 @@ import * as snarkjs from 'snarkjs';
 const protocol = '%%protocol%%';
 const wasmPath = '%%wasm_path%%';
 const pkeyPath = '%%pkey_path%%';
+const vkey= %%vkey%%;
 
 export async function prove(input) {
   const thisdir = dirname(fileURLToPath(import.meta.url));
@@ -24,6 +25,10 @@ export async function prove(input) {
     proof,
     calldata,
   };
+}
+
+export async function verify(proof) {
+  return await snarkjs[protocol].verify(vkey, proof.publicSignals, proof.proof);
 }
 
 // The following is adapted from circomkit/src/utils/calldata.ts

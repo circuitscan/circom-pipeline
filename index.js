@@ -113,19 +113,22 @@ async function build(event) {
 
   const wasmPath = join('build', BUILD_NAME, BUILD_NAME + '_js', BUILD_NAME + '.wasm');
   const pkeyPath = join('build', BUILD_NAME, event.payload.protocol + '_pkey.zkey');
+  const vkeyPath = join('build', BUILD_NAME, event.payload.protocol + '_vkey.json');
+  const vkey = readFileSync(join(dirPkg, vkeyPath), {encoding: 'utf8'});
 
   const pkgName = `snarkjs-prover-${circuitName}-${randHex()}`;
 
   // Include Javascript to generate and verify proofs
   const thisdir = dirname(fileURLToPath(import.meta.url));
-  const templates = [ 'index.js', 'package.json' ];
+  const templates = [ 'index.js', 'package.json', 'README.md' ];
   for(let template of templates) {
     const content = readFileSync(join(thisdir, 'template', template), {encoding: 'utf8'})
       .replaceAll('%%package_name%%', pkgName)
       .replaceAll('%%circuit_name%%', circuitName)
       .replaceAll('%%protocol%%', event.payload.protocol)
       .replaceAll('%%wasm_path%%', wasmPath)
-      .replaceAll('%%pkey_path%%', pkeyPath);
+      .replaceAll('%%pkey_path%%', pkeyPath)
+      .replaceAll('%%vkey%%', vkey);
     writeFileSync(join(dirPkg, template), content);
   }
 
