@@ -135,8 +135,8 @@ async function build(event) {
     writeFileSync(join(dirPkg, template), content);
   }
 
-  // TODO publish result to NPM
-  await executeCommand(`npm publish --dry-run --userconfig ${cfgPath} ${dirPkg}`);
+  // Publish result to NPM
+  await executeCommand(`npm publish ${event.payload.dryRun ? '--dry-run' : ''} --userconfig ${cfgPath} ${dirPkg}`);
 
   return {
     statusCode: 200,
@@ -144,14 +144,6 @@ async function build(event) {
       pkgName,
     }),
   };
-}
-
-function randHex() {
-  let result = '';
-  for (let i = 0; i < 10; i++) {
-    result += Math.floor(Math.random() * 16).toString(16);
-  }
-  return result;
 }
 
 function executeCommand(command) {

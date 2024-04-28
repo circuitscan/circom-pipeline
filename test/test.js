@@ -14,6 +14,7 @@ process.env.NPM_AUTH_TOKEN = 'npm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 const EVENT = {
   payload: {
     action: 'build',
+    dryRun: true,
     files: {
       'multiplier.circom': {
         code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
