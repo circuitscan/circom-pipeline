@@ -5,6 +5,8 @@ import {tmpdir} from 'node:os';
 import {exec} from 'node:child_process';
 
 import {Circomkit} from 'circomkit';
+import {getPtauName} from 'circomkit/dist/utils/ptau.js';
+import * as snarkjs from 'snarkjs';
 import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
 
 export const BUILD_NAME = 'verify_circuit';
@@ -104,7 +106,23 @@ async function build(event) {
   }, null, 2));
   await circomkit.compile(BUILD_NAME, event.payload.circuit);
 
-  await circomkit.setup(BUILD_NAME);
+  if(config.protocol === 'groth16' && event.payload.finalZkey) {
+    const {constraints} = await circomkit.info(BUILD_NAME);
+    const ptauName = getPtauName(constraints);
+    const pkeyPath = join(dirBuild, BUILD_NAME, 'groth16_pkey.zkey');
+    // TODO Download finalZkey to pkeyPath
+    const testKey = readFileSync('test/test.zkey');
+    writeFileSync(pkeyPath, testKey);
+    // Verify the setup
+    const result = await snarkjs.zKey.verifyFromR1cs(
+      join(dirBuild, BUILD_NAME, BUILD_NAME + '.r1cs'),
+      join(dirPtau, ptauName),
+      pkeyPath,
+    );
+    if(!result) throw new Error('INVALID_ZKEY');
+  } else {
+    await circomkit.setup(BUILD_NAME);
+  }
   await circomkit.vkey(BUILD_NAME);
 
   // TODO: plonk output has an errant hardhat debug include

@@ -21,7 +21,8 @@ const EVENT = {
       },
     },
     circomPath: 'circom',
-    protocol: 'fflonk',
+    protocol: 'groth16',
+    finalZkey: 'foobar',
     circuit: {
       file: 'multiplier',
       template: 'Multiplier',
@@ -32,6 +33,10 @@ const EVENT = {
 };
 
 describe('Lambda Function', function () {
+  after(async () => {
+    await globalThis.curve_bn128.terminate();
+  });
+
   it('should make a package that can prove and verify', async function () {
     this.timeout(10000);
 
