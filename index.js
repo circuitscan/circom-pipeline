@@ -110,9 +110,15 @@ async function build(event) {
     const {constraints} = await circomkit.info(BUILD_NAME);
     const ptauName = getPtauName(constraints);
     const pkeyPath = join(dirBuild, BUILD_NAME, 'groth16_pkey.zkey');
-    // TODO Download finalZkey to pkeyPath
-    const testKey = readFileSync('test/test.zkey');
-    writeFileSync(pkeyPath, testKey);
+    let pkeyData;
+    if(event.payload.finalZkey.startsWith('http')) {
+      // TODO Fetch it
+      throw new Error('NYI zkey fetch');
+    } else {
+      // Is base64 encoded
+      pkeyData = Buffer.from(event.payload.finalZkey, 'base64');
+    }
+    writeFileSync(pkeyPath, pkeyData);
     // Verify the setup
     const result = await snarkjs.zKey.verifyFromR1cs(
       join(dirBuild, BUILD_NAME, BUILD_NAME + '.r1cs'),

@@ -11,34 +11,73 @@ import {handler, BUILD_NAME} from '../index.js';
 // Not used during test but it's still checked
 process.env.NPM_AUTH_TOKEN = 'npm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
-const EVENT = {
-  payload: {
-    action: 'build',
-    dryRun: true,
-    files: {
-      'multiplier.circom': {
-        code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
+const EVENTS = [
+  {
+    payload: {
+      action: 'build',
+      files: {
+        'multiplier.circom': {
+          code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
+        },
+      },
+      circomPath: 'circom',
+      protocol: 'plonk',
+      circuit: {
+        file: 'multiplier',
+        template: 'Multiplier',
+        params: [2],
+        pubs: [],
       },
     },
-    circomPath: 'circom',
-    protocol: 'groth16',
-    finalZkey: 'foobar',
-    circuit: {
-      file: 'multiplier',
-      template: 'Multiplier',
-      params: [2],
-      pubs: [],
+  },
+  {
+    payload: {
+      action: 'build',
+      files: {
+        'multiplier.circom': {
+          code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
+        },
+      },
+      circomPath: 'circom',
+      protocol: 'fflonk',
+      circuit: {
+        file: 'multiplier',
+        template: 'Multiplier',
+        params: [2],
+        pubs: [],
+      },
     },
   },
-};
+  {
+    payload: {
+      action: 'build',
+      files: {
+        'multiplier.circom': {
+          code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
+        },
+      },
+      circomPath: 'circom',
+      protocol: 'groth16',
+      finalZkey: readFileSync('test/test.zkey').toString('base64'),
+      circuit: {
+        file: 'multiplier',
+        template: 'Multiplier',
+        params: [2],
+        pubs: [],
+      },
+    },
+  },
+];
 
 describe('Lambda Function', function () {
   after(async () => {
     await globalThis.curve_bn128.terminate();
   });
 
-  it('should make a package that can prove and verify', async function () {
+  EVENTS.forEach((EVENT, index) => {
+  it(`should make a package that can prove and verify #${index}`, async function () {
     this.timeout(10000);
+    EVENT.payload.dryRun = true;
 
     const result = await handler(EVENT);
 
@@ -90,5 +129,5 @@ describe('Lambda Function', function () {
 
     fse.removeSync(newPath);
 
-  });
+  })});
 });
