@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "todo": "bash -c \"grep -rn 'TODO' --exclude-dir={node_modules,build,cache,lib,out} --exclude={*.min*,*.swp,package.json,solc} *\""
   },
   "repository": {
     "type": "git",
@@ -37,6 +38,7 @@
     "hardhat": "^2.14.0",
     "hardhat-gas-reporter": "^1.0.8",
     "mocha": "^10.4.0",
+    "pem": "^1.14.8",
     "snarkjs": "^0.7.4",
     "solidity-coverage": "^0.8.12",
     "ts-node": "^10.9.2",

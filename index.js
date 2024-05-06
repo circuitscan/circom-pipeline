@@ -1,4 +1,11 @@
-import {readFileSync, writeFileSync, mkdtempSync, mkdirSync} from 'node:fs';
+import https from 'node:https';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdtempSync,
+  mkdirSync,
+  createWriteStream,
+} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname, join} from 'node:path';
 import {tmpdir} from 'node:os';
@@ -79,8 +86,6 @@ async function build(event) {
     protocol: event.payload.protocol,
   };
 
-  // TODO support deterministic groth16 compilations
-  // https://github.com/circuitscan/circuitscan/issues/4
   if(config.protocol === 'groth16') {
     Object.assign(config, {
       prime: 'bn128',
@@ -107,18 +112,19 @@ async function build(event) {
   await circomkit.compile(BUILD_NAME, event.payload.circuit);
 
   if(config.protocol === 'groth16' && event.payload.finalZkey) {
+    // Using supplied setup
     const {constraints} = await circomkit.info(BUILD_NAME);
     const ptauName = getPtauName(constraints);
     const pkeyPath = join(dirBuild, BUILD_NAME, 'groth16_pkey.zkey');
     let pkeyData;
-    if(event.payload.finalZkey.startsWith('http')) {
-      // TODO Fetch it
-      throw new Error('NYI zkey fetch');
+    if(event.payload.finalZkey.startsWith('https')) {
+      // Large zkeys fetched over HTTP
+      await downloadBinaryFile(event.payload.finalZkey, pkeyPath);
     } else {
-      // Is base64 encoded
+      // Small ones can be sent base64 encoded
       pkeyData = Buffer.from(event.payload.finalZkey, 'base64');
+      writeFileSync(pkeyPath, pkeyData);
     }
-    writeFileSync(pkeyPath, pkeyData);
     // Verify the setup
     const result = await snarkjs.zKey.verifyFromR1cs(
       join(dirBuild, BUILD_NAME, BUILD_NAME + '.r1cs'),
@@ -180,6 +186,43 @@ function executeCommand(command) {
       console.log(`stdout: ${stdout}`);
       console.error(`stderr: ${stderr}`);
       resolve(stdout ? stdout : stderr);
+    });
+  });
+}
+
+function downloadBinaryFile(url, outputPath) {
+  return new Promise((resolve, reject) => {
+    const file = createWriteStream(outputPath);
+    const request = https.get(url, {
+      agent: new https.Agent({
+        rejectUnauthorized: !url.startsWith('https://localhost:') // This allows self-signed certificates
+      }),
+    }, response => {
+      // Check if the request was successful
+      if (response.statusCode !== 200) {
+        reject(new Error(`Failed to download file: Status code ${response.statusCode}`));
+        return;
+      }
+
+      // Pipe the response stream directly into the file stream
+      response.pipe(file);
+    });
+
+    file.on('finish', () => {
+      file.close();
+      resolve(`File downloaded and saved to ${outputPath}`);
+    });
+
+    // Handle request errors
+    request.on('error', err => {
+      file.close();
+      reject(err);
+    });
+
+    file.on('error', err => {
+      file.close();
+      // Attempt to delete the file in case of any error while writing to the stream
+      unlink(outputPath, () => reject(err));
     });
   });
 }
