@@ -5,12 +5,16 @@ import {
   mkdtempSync,
   mkdirSync,
   createWriteStream,
+  createReadStream,
 } from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname, join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {exec} from 'node:child_process';
 
+import {S3Client, PutObjectCommand} from '@aws-sdk/client-s3';
+import {Upload} from '@aws-sdk/lib-storage';
+import archiver from 'archiver';
 import {Circomkit} from 'circomkit';
 import {getPtauName} from 'circomkit/dist/utils/ptau.js';
 import * as snarkjs from 'snarkjs';
@@ -18,6 +22,10 @@ import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-
 
 export const BUILD_NAME = 'verify_circuit';
 const HARDHAT_IMPORT = 'import "hardhat/console.sol";';
+
+const s3Client = new S3Client({
+  endpoint: process.env.AWS_ENDPOINT,
+});
 
 export async function handler(event) {
   if('body' in event) {
@@ -45,16 +53,9 @@ export async function handler(event) {
 
 async function build(event) {
   // TODO validate inputs for better error msgs
-  const authToken = String(process.env.NPM_AUTH_TOKEN);
-  if(authToken.length !== 40 || !authToken.startsWith('npm_'))
-    throw new Error('INVALID_NPM_AUTH_TOKEN');
-
-  const cfgPath = join(mkdtempSync(join(tmpdir(), 'cfg-')), '.npmrc');
-  writeFileSync(cfgPath, `//registry.npmjs.org/:_authToken=${authToken}`);
-
   const circuitName = event.payload.circuit.template.toLowerCase();
 
-  const pkgName = `snarkjs-prover-${circuitName}-${uniqueNamesGenerator({
+  const pkgName = `${circuitName}-${uniqueNamesGenerator({
     dictionaries: [adjectives, colors, animals],
     separator: '-',
   })}`;
@@ -85,14 +86,6 @@ async function build(event) {
     circomPath: event.payload.circomPath,
     protocol: event.payload.protocol,
   };
-
-  if(config.protocol === 'groth16') {
-    Object.assign(config, {
-      prime: 'bn128',
-      groth16numContributions: 1,
-      groth16askForEntropy: false,
-    });
-  }
 
   // Export to package
   writeFileSync(join(dirPkg, 'circomkit.json'), JSON.stringify({
@@ -165,8 +158,14 @@ async function build(event) {
     writeFileSync(join(dirPkg, template), content);
   }
 
-  // Publish result to NPM
-  await executeCommand(`npm publish ${event.payload.dryRun ? '--dry-run' : ''} --userconfig ${cfgPath} ${dirPkg}`);
+  // Circom sources to S3
+  await zipDirectory(dirCircuits, dirPkg + '-source.zip');
+  await uploadLargeFileToS3(pkgName + '/source.zip', dirPkg + '-source.zip');
+  // Solidity verifier to s3
+  await uploadLargeFileToS3(pkgName + '/verifier.sol', contractPath);
+  // Entire package to s3
+  await zipDirectory(dirPkg, dirPkg + '.zip');
+  await uploadLargeFileToS3(pkgName + '/pkg.zip', dirPkg + '.zip');
 
   return {
     statusCode: 200,
@@ -227,3 +226,49 @@ function downloadBinaryFile(url, outputPath) {
   });
 }
 
+async function uploadLargeFileToS3(keyName, filePath) {
+  const upload = new Upload({
+    client: s3Client,
+    params: {
+      Bucket: process.env.BLOB_BUCKET,
+      Key: keyName,
+      Body: createReadStream(filePath),
+    },
+  });
+
+  // Monitor progress
+  upload.on('httpUploadProgress', (progress) => {
+    console.log(`Uploaded ${progress.loaded} of ${progress.total} bytes`);
+  });
+
+  // Execute the upload
+  try {
+    const result = await upload.done();
+    console.log('Upload complete:', result);
+  } catch (error) {
+    console.error('Upload failed:', error);
+  }
+}
+
+function zipDirectory(sourceDir, outPath) {
+  return new Promise((resolve, reject) => {
+    const output = createWriteStream(outPath);
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // Sets the compression level.
+    });
+
+    output.on('close', function() {
+      console.log(archive.pointer() + ' total bytes');
+      console.log('archiver has been finalized and the output file descriptor has closed.');
+      resolve();
+    });
+
+    archive.on('error', function(err) {
+      reject(err);
+    });
+
+    archive.pipe(output);
+    archive.directory(sourceDir);
+    archive.finalize();
+  });
+}

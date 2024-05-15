@@ -1,6 +1,6 @@
 # Circom Compiler Lambda Docker Container
 
-Input a Circom circuit source and compiler configuration to publish an NPM package with:
+Input a Circom circuit source and compiler configuration to generate (and upload to S3) zip of sources, Solidity verifier, and zip with build artifacts and development library:
 
 * Circuit sources configured into [Circomkit](https://github.com/erhant/circomkit)
 * All the build artifacts (including verifier Solidity source)
@@ -38,6 +38,15 @@ Input a Circom circuit source and compiler configuration to publish an NPM packa
     }
     */
   ```
+
+## Running tests
+
+```sh
+$ cp .env.example .env
+# Update S3 configuration
+$ vim .env
+$ yarn test
+```
 
 ## License
 

@@ -5,13 +5,15 @@ import {tmpdir} from 'node:os';
 import fse from 'fs-extra';
 import hardhat from 'hardhat';
 import solc from 'solc';
+import { S3Client, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 
 import {FileServer} from './utils/FileServer.js';
 
 import {handler, BUILD_NAME} from '../index.js';
 
-// Not used during test but it's still checked
-process.env.NPM_AUTH_TOKEN = 'npm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+const s3Client = new S3Client({
+  endpoint: process.env.AWS_ENDPOINT,
+});
 
 const fileServers = [];
 
@@ -44,6 +46,24 @@ const EVENTS = [
       },
       circomPath: 'circom',
       protocol: 'fflonk',
+      circuit: {
+        file: 'multiplier',
+        template: 'Multiplier',
+        params: [2],
+        pubs: [],
+      },
+    },
+  },
+  {
+    payload: {
+      action: 'build',
+      files: {
+        'multiplier.circom': {
+          code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
+        },
+      },
+      circomPath: 'circom',
+      protocol: 'groth16',
       circuit: {
         file: 'multiplier',
         template: 'Multiplier',
@@ -160,7 +180,37 @@ describe('Lambda Function', function () {
     // Interaction with the contract
     strictEqual(await contract.verifyProof(...calldata), true);
 
+    // Cleanup filesystem
     fse.removeSync(newPath);
+    // Cleanup S3
+    await deleteS3Keys([
+      body.pkgName + '/source.zip',
+      body.pkgName + '/verifier.sol',
+      body.pkgName + '/pkg.zip',
+    ]);
 
   })});
 });
+
+
+async function deleteS3Keys(keys) {
+  if (!Array.isArray(keys) || keys.length === 0) {
+    throw new Error("Keys are required, and keys must be a non-empty array.");
+  }
+
+  const deleteParams = {
+    Bucket: process.env.BLOB_BUCKET,
+    Delete: {
+      Objects: keys.map((key) => ({ Key: key })),
+      Quiet: false,
+    },
+  };
+
+  try {
+    const data = await s3Client.send(new DeleteObjectsCommand(deleteParams));
+    console.log("Delete operation completed successfully:", data);
+  } catch (error) {
+    console.error("Error deleting objects:", error);
+    throw error;
+  }
+}
