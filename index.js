@@ -242,12 +242,8 @@ async function uploadLargeFileToS3(keyName, filePath) {
   });
 
   // Execute the upload
-  try {
-    const result = await upload.done();
-    console.log('Upload complete:', result);
-  } catch (error) {
-    console.error('Upload failed:', error);
-  }
+  const result = await upload.done();
+  console.log('Upload complete:', result);
 }
 
 function zipDirectory(sourceDir, outPath) {

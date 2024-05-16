@@ -27,6 +27,7 @@ RUN chmod +x /tmp/circom-*
 # Move the executables to a directory included in the PATH
 RUN mv /tmp/circom-* /usr/local/bin
 
+COPY template/* ${LAMBDA_TASK_ROOT}/template/
 # Copy app source last for faster rebuilds
 COPY *.js ${LAMBDA_TASK_ROOT}/
 
