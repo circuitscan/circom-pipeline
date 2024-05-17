@@ -83,6 +83,7 @@ Resources:
           cat > /etc/nginx/conf.d/reverse-proxy.conf <<EOF
           server {
               listen 80;
+              client_max_body_size 50M;
               location / {
                   proxy_pass http://localhost:9000;
                   proxy_set_header Host \$host;

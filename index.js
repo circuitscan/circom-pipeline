@@ -68,6 +68,7 @@ async function build(event) {
   mkdirSync(dirCircuits);
   mkdirSync(dirBuild);
 
+  // TODO support multiple sources of same filename! (zkp2p-venmo-send has 2 extract.circoms)
   for(let file of Object.keys(event.payload.files)) {
     let code = event.payload.files[file].code;
     const matches = code.matchAll(/include "([^"]+)";/g);
