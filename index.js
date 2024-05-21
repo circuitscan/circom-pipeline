@@ -8,7 +8,7 @@ import {
   createReadStream,
 } from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {dirname, join} from 'node:path';
+import {dirname, join, isAbsolute, resolve, sep} from 'node:path';
 import {tmpdir} from 'node:os';
 import {exec} from 'node:child_process';
 
@@ -68,16 +68,9 @@ async function build(event) {
   mkdirSync(dirCircuits);
   mkdirSync(dirBuild);
 
-  // TODO support multiple sources of same filename! (zkp2p-venmo-send has 2 extract.circoms)
   for(let file of Object.keys(event.payload.files)) {
-    let code = event.payload.files[file].code;
-    const matches = code.matchAll(/include "([^"]+)";/g);
-    const imports = Array.from(matches);
-    for(let include of imports) {
-      const filename = include[1].split('/').at(-1);
-      code = code.replaceAll(include[0], `include "${filename}";`);
-    }
-    writeFileSync(join(dirCircuits, file), code);
+    mkdirpSync(dirname(join(dirCircuits, file)));
+    writeFileSync(join(dirCircuits, file), event.payload.files[file].code);
   }
 
   const config = {
@@ -268,4 +261,22 @@ function zipDirectory(sourceDir, outPath) {
     archive.directory(sourceDir);
     archive.finalize();
   });
+}
+
+function mkdirpSync(targetDir) {
+  const initDir = isAbsolute(targetDir) ? sep : '';
+  const baseDir = '.';
+
+  targetDir.split(sep).reduce((parentDir, childDir) => {
+    const curDir = resolve(baseDir, parentDir, childDir);
+    try {
+      mkdirSync(curDir);
+    } catch (err) {
+      if (err.code !== 'EEXIST') {
+        throw err;
+      }
+    }
+
+    return curDir;
+  }, initDir);
 }
