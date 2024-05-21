@@ -258,7 +258,7 @@ function zipDirectory(sourceDir, outPath) {
     });
 
     archive.pipe(output);
-    archive.directory(sourceDir);
+    archive.directory(sourceDir, false);
     archive.finalize();
   });
 }
