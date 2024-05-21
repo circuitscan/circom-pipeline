@@ -29,5 +29,6 @@ RUN mv /tmp/circom-* /usr/local/bin
 
 COPY template/* ${LAMBDA_TASK_ROOT}/template/
 # Copy app source last for faster rebuilds
-COPY *.js ${LAMBDA_TASK_ROOT}/
+COPY index.js ${LAMBDA_TASK_ROOT}/index.js
+COPY src/*.js ${LAMBDA_TASK_ROOT}/src/
 

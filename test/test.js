@@ -9,7 +9,8 @@ import { S3Client, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 
 import {FileServer} from './utils/FileServer.js';
 
-import {handler, BUILD_NAME} from '../index.js';
+import {handler} from '../index.js';
+import {BUILD_NAME} from '../src/build.js';
 
 const s3Client = new S3Client({
   endpoint: process.env.AWS_ENDPOINT,
@@ -187,6 +188,7 @@ describe('Lambda Function', function () {
       body.pkgName + '/source.zip',
       body.pkgName + '/verifier.sol',
       body.pkgName + '/pkg.zip',
+      body.pkgName + '/info.json',
     ]);
 
   })});
