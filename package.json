@@ -26,6 +26,8 @@
     "@aws-sdk/lib-storage": "^3.576.0",
     "archiver": "^7.0.1",
     "circomkit": "^0.1.0",
+    "diff": "^5.2.0",
+    "pg": "^8.11.5",
     "unique-names-generator": "^4.7.1",
     "viem": "^2.12.0"
   },

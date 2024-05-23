@@ -101,6 +101,7 @@ export async function build(event) {
 
   // TODO: plonk output has an errant hardhat debug include
   // https://github.com/iden3/snarkjs/pull/464
+  // TODO allow specifying snarkjs version (groth16 template changed in 0.7.4)
   const contractPath = await circomkit.contract(BUILD_NAME);
   let solidityCode = readFileSync(contractPath, {encoding: 'utf8'});
   if(solidityCode.indexOf(HARDHAT_IMPORT) > -1) {
