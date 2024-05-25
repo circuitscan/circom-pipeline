@@ -121,6 +121,7 @@ const EVENTS = [
 
 describe('Lambda Function', function () {
   after(async () => {
+    // TODO having >1 snarkjs version in process results in this global being overwritten
     await globalThis.curve_bn128.terminate();
     fileServers.forEach(server => server.server.close());
   });
@@ -131,8 +132,6 @@ describe('Lambda Function', function () {
 
     if(typeof EVENT === 'function') EVENT = await EVENT();
 
-    EVENT.payload.dryRun = true;
-
     const result = await handler(EVENT);
 
     strictEqual(result.statusCode, 200);
@@ -140,7 +139,7 @@ describe('Lambda Function', function () {
     const dirPkg = join(tmpdir(), body.pkgName);
     const newPath = join('node_modules', body.pkgName);
     // Node won't import from outside this directory
-    fse.moveSync(dirPkg, newPath)
+    fse.moveSync(dirPkg, newPath);
 
     const {prove, verify} = await import(body.pkgName);
 

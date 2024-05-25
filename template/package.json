@@ -11,7 +11,7 @@
   "author": "Circuitscan <circuitscan@clonk.me>",
   "license": "MIT",
   "dependencies": {
-    "snarkjs": "^0.7.4"
+    "snarkjs": "%%snarkjs_version%%"
   },
   "devDependencies": {
     "circomkit": "^0.1.0"
