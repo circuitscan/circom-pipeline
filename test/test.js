@@ -27,7 +27,7 @@ const EVENTS = [
           code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
         },
       },
-      circomPath: 'circom',
+      circomPath: 'circom-v2.1.8',
       protocol: 'plonk',
       circuit: {
         file: 'multiplier',
@@ -45,7 +45,7 @@ const EVENTS = [
           code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
         },
       },
-      circomPath: 'circom',
+      circomPath: 'circom-v2.1.8',
       protocol: 'fflonk',
       circuit: {
         file: 'multiplier',
@@ -63,7 +63,7 @@ const EVENTS = [
           code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
         },
       },
-      circomPath: 'circom',
+      circomPath: 'circom-v2.1.8',
       protocol: 'groth16',
       circuit: {
         file: 'multiplier',
@@ -81,7 +81,7 @@ const EVENTS = [
           code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
         },
       },
-      circomPath: 'circom',
+      circomPath: 'circom-v2.1.8',
       protocol: 'groth16',
       finalZkey: readFileSync('test/test.zkey').toString('base64'),
       circuit: {
@@ -105,7 +105,7 @@ const EVENTS = [
             code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
           },
         },
-        circomPath: 'circom',
+        circomPath: 'circom-v2.1.8',
         protocol: 'groth16',
         finalZkey: `https://localhost:${fileServerPort}/`,
         circuit: {

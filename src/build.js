@@ -22,26 +22,31 @@ import {
   zipDirectory,
   mkdirpSync,
 } from './utils.js';
+import {
+  SNARKJS_VERSIONS,
+  CIRCOM_VERSIONS,
+} from './deps.js';
 
 export const BUILD_NAME = 'verify_circuit';
 const HARDHAT_IMPORT = 'import "hardhat/console.sol";';
-const SNARKJS_VERSIONS = [
-  '0.7.4',
-  '0.7.3',
-  '0.7.2',
-  '0.7.1',
-  '0.7.0',
-  '0.6.11',
-];
 
 export async function build(event) {
-  // TODO validate inputs for better error msgs
   const circuitName = event.payload.circuit.template.toLowerCase();
-  if(event.payload.snarkjsVersion && SNARKJS_VERSIONS.indexOf(event.payload.snarkjsVersion) === -1)
-    throw new Error('INVALID_SNARKJS_VERSION');
   const snarkjsVersion = event.payload.snarkjsVersion || SNARKJS_VERSIONS[0];
+  if(SNARKJS_VERSIONS.indexOf(snarkjsVersion) === -1)
+    throw new Error('invalid_snarkjs_version');
   const snarkjsPkgName = `snarkjs-v${snarkjsVersion}`;
   const snarkjs = await import(snarkjsPkgName);
+  if(!(event.payload.protocol in snarkjs))
+    throw new Error('invalid_protocol');
+  if(typeof event.payload.files !== 'object')
+    throw new Error('invalid_files');
+  if(!event.payload.circomPath
+      || !event.payload.circomPath.startsWith('circom-v')
+      || CIRCOM_VERSIONS.indexOf(event.payload.circomPath.slice(8)) === -1)
+    throw new Error('invalid_circompath')
+  if(typeof event.payload.circuit !== 'object')
+    throw new Error('invalid_circuit');
 
   const pkgName = `${circuitName}-${uniqueNamesGenerator({
     dictionaries: [adjectives, colors, animals],
@@ -110,7 +115,7 @@ export async function build(event) {
       ptauPath,
       fullPkeyPath,
     );
-    if(!result) throw new Error('INVALID_ZKEY');
+    if(!result) throw new Error('invalid_zkey');
   } else {
     // This section adapted from circomkit so it can run using custom snarkjs version
     if(event.payload.protocol === 'groth16') {
