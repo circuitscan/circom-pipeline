@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "docker build -t circuitscan_lambda_circom_v2 .",
-    "dev": "docker run --env-file .env --rm -p 9000:8080 circuitscan_lambda_circom_v2:latest",
+    "dev": "docker run --env-file .env --rm -p 9001:8080 circuitscan_lambda_circom_v2:latest",
     "deploy": "aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 664190027399.dkr.ecr.us-west-2.amazonaws.com && docker tag circuitscan_lambda_circom_v2:latest 664190027399.dkr.ecr.us-west-2.amazonaws.com/circuitscan_lambda_circom_v2:latest && docker push 664190027399.dkr.ecr.us-west-2.amazonaws.com/circuitscan_lambda_circom_v2:latest",
     "test": "node -r dotenv/config node_modules/.bin/mocha",
     "todo": "bash -c \"grep -rn 'TODO' --exclude-dir={node_modules,build,cache,lib,out} --exclude={*.min*,*.swp,package.json,solc} *\""

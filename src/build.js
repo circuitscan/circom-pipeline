@@ -37,7 +37,7 @@ export async function build(event) {
     throw new Error('invalid_snarkjs_version');
   const snarkjsPkgName = `snarkjs-v${snarkjsVersion}`;
   const snarkjs = await import(snarkjsPkgName);
-  if(!(event.payload.protocol in snarkjs))
+  if(['groth16', 'fflonk', 'plonk'].indexOf(event.payload.protocol) === -1)
     throw new Error('invalid_protocol');
   if(typeof event.payload.files !== 'object')
     throw new Error('invalid_files');
