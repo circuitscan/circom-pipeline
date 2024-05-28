@@ -62,6 +62,15 @@ export function downloadBinaryFile(url, outputPath) {
   });
 }
 
+export async function uploadJsonToS3(bucketName, key, jsonObject) {
+  await s3Client.send(new PutObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    Body: JSON.stringify(jsonObject),
+    ContentType: 'application/json'
+  }));
+}
+
 export async function uploadLargeFileToS3(keyName, filePath) {
   const upload = new Upload({
     client: s3Client,

@@ -21,6 +21,7 @@ const fileServers = [];
 const EVENTS = [
   {
     payload: {
+      requestId: 'abcdef',
       action: 'build',
       files: {
         'multiplier.circom': {
@@ -39,6 +40,7 @@ const EVENTS = [
   },
   {
     payload: {
+      requestId: 'abcdef',
       action: 'build',
       files: {
         'multiplier.circom': {
@@ -57,6 +59,7 @@ const EVENTS = [
   },
   {
     payload: {
+      requestId: 'abcdef',
       action: 'build',
       files: {
         'multiplier.circom': {
@@ -75,6 +78,7 @@ const EVENTS = [
   },
   {
     payload: {
+      requestId: 'abcdef',
       action: 'build',
       files: {
         'multiplier.circom': {
@@ -99,6 +103,7 @@ const EVENTS = [
     const fileServerPort = await fileServer.start();
     return {
       payload: {
+        requestId: 'abcdef',
         action: 'build',
         files: {
           'multiplier.circom': {
@@ -116,7 +121,32 @@ const EVENTS = [
         },
       },
     };
-  }
+  },
+  {
+    test: {
+      checkFail(status) {
+        return status[status.length-1].msg === 'Invalid finalZkey!';
+      },
+    },
+    payload: {
+      requestId: 'abcdef',
+      action: 'build',
+      files: {
+        'multiplier.circom': {
+          code: readFileSync('test/circuits/multiplier.circom', {encoding: 'utf8'}),
+        },
+      },
+      circomPath: 'circom-v2.1.8',
+      protocol: 'groth16',
+      finalZkey: readFileSync('test/test-fail.zkey').toString('base64'),
+      circuit: {
+        file: 'multiplier',
+        template: 'Multiplier',
+        params: [2],
+        pubs: [],
+      },
+    },
+  },
 ];
 
 describe('Lambda Function', function () {
@@ -128,11 +158,16 @@ describe('Lambda Function', function () {
 
   EVENTS.forEach((EVENT, index) => {
   it(`should make a package that can prove and verify #${index}`, async function () {
-    this.timeout(10000);
+    this.timeout(20000);
 
     if(typeof EVENT === 'function') EVENT = await EVENT();
 
     const result = await handler(EVENT);
+    if(('test' in EVENT) && (typeof EVENT.test.checkFail === 'function')) {
+      const status = await (await fetch(`${process.env.BLOB_URL}status/${EVENT.payload.requestId}.json`)).json();
+      strictEqual(EVENT.test.checkFail(status), true);
+      return;
+    }
 
     strictEqual(result.statusCode, 200);
     const body = JSON.parse(result.body);
