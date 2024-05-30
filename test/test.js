@@ -13,7 +13,13 @@ import {handler} from '../index.js';
 import {BUILD_NAME} from '../src/build.js';
 
 const s3Client = new S3Client({
-  endpoint: process.env.AWS_ENDPOINT,
+  // use alternate env var names for lambda compatibility
+  region: process.env.BB_REGION,
+  credentials: {
+    accessKeyId: process.env.BB_ACCESS_KEY_ID,
+    secretAccessKey: process.env.BB_SECRET_ACCESS_KEY,
+  },
+  endpoint: process.env.BB_ENDPOINT,
 });
 
 const fileServers = [];
@@ -164,6 +170,7 @@ describe('Lambda Function', function () {
 
     const result = await handler(EVENT);
     if(('test' in EVENT) && (typeof EVENT.test.checkFail === 'function')) {
+      await delay(5000); // give time for s3 to be correct
       const status = await (await fetch(`${process.env.BLOB_URL}status/${EVENT.payload.requestId}.json`)).json();
       strictEqual(EVENT.test.checkFail(status), true);
       return;
@@ -249,4 +256,8 @@ async function deleteS3Keys(keys) {
     console.error("Error deleting objects:", error);
     throw error;
   }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(() => resolve(), ms));
 }

@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create a Lambda function from an ECR image with a function URL
+
+Parameters:
+  ECRRepoName:
+    Type: String
+    Description: The name of the ECR repository
+    Default: circuitscan_lambda_circom_v2
+  ECRImageTag:
+    Type: String
+    Description: The tag of the ECR image
+    Default: latest
+  BBAccessKeyId:
+    Type: String
+    Description: For file storage on backblaze
+  BBSecret:
+    Type: String
+    Description: For file storage on backblaze
+  BBRegion:
+    Type: String
+    Description: For file storage on backblaze
+    Default: us-west-002
+  BBEndpoint:
+    Type: String
+    Description: For file storage on backblaze
+    Default: https://s3.us-west-002.backblazeb2.com
+  BBBucket:
+    Type: String
+    Description: For file storage on backblaze
+    Default: circuitscan-blobs
+  BlobURL:
+    Type: String
+    Description: For file storage on backblaze
+    Default: https://f002.backblazeb2.com/file/circuitscan-blobs/
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "LambdaExecutionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ECRRepoName}-lambda-function"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      PackageType: Image
+      Code:
+        ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepoName}:${ECRImageTag}"
+      MemorySize: 10240
+      Timeout: 600
+      Environment:
+        Variables:
+          BB_ACCESS_KEY_ID: !Ref BBAccessKeyId
+          BB_SECRET_ACCESS_KEY: !Ref BBSecret
+          BB_REGION: !Ref BBRegion
+          BB_ENDPOINT: !Ref BBEndpoint
+          BLOB_BUCKET: !Ref BBBucket
+          BLOB_URL: !Ref BlobURL
+
+  LambdaFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      AuthType: NONE
+      TargetFunctionArn: !GetAtt LambdaFunction.Arn
+
+  LambdaFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunctionUrl"
+      FunctionName: !Ref LambdaFunction
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+Outputs:
+  LambdaFunctionUrl:
+    Description: The URL of the Lambda function
+    Value: !GetAtt LambdaFunctionUrl.FunctionUrl
+

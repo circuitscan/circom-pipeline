@@ -8,7 +8,13 @@ import {Upload} from '@aws-sdk/lib-storage';
 import archiver from 'archiver';
 
 const s3Client = new S3Client({
-  endpoint: process.env.AWS_ENDPOINT,
+  // use alternate env var names for lambda compatibility
+  region: process.env.BB_REGION,
+  credentials: {
+    accessKeyId: process.env.BB_ACCESS_KEY_ID,
+    secretAccessKey: process.env.BB_SECRET_ACCESS_KEY,
+  },
+  endpoint: process.env.BB_ENDPOINT,
 });
 
 export function executeCommand(command) {
