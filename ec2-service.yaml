@@ -46,6 +46,19 @@ Parameters:
     Type: String
     Default: ""
 
+  CloudflareApiKey:
+    Description: Cloudflare API Key
+    Type: String
+    NoEcho: true
+
+  CloudflareZoneId:
+    Description: Cloudflare Zone ID
+    Type: String
+
+  DnsRecordName:
+    Description: DNS Record Name
+    Type: String
+
 Mappings:
   AWSRegionToAMI:
     us-west-2:
@@ -101,6 +114,16 @@ Resources:
           EOF
 
           service nginx restart
+
+          # Get the instance's public IP address
+          INSTANCE_IP=$(TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"` && curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/public-ipv4)
+          echo $INSTANCE_IP > /home/ec2-user/ip.txt
+
+          # Add DNS record to Cloudflare
+          curl -X POST "https://api.cloudflare.com/client/v4/zones/${CloudflareZoneId}/dns_records" \
+            -H "Authorization: Bearer ${CloudflareApiKey}" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"A","name":"'${DnsRecordName}'","content":"'$INSTANCE_IP'","ttl":120,"proxied":true}' > /home/ec2-user/dns.txt 2> /home/ec2-user/dnserr.txt
 
           echo "Lambda container is running on port 9000 and accessible via NGINX on port 80" > /home/ec2-user/container-status.txt
 

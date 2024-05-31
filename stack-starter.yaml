@@ -22,6 +22,13 @@ Parameters:
     Description: Email to receive start/stop notifications (must be verified as sender in SES)
     Type: String
     Default: "ben@latenightsketches.com"
+  CloudflareApiKey:
+    Description: Cloudflare API Key
+    Type: String
+    NoEcho: true
+  CloudflareZoneId:
+    Description: Cloudflare Zone ID
+    Type: String
 
 Resources:
   LambdaExecutionRole:
@@ -68,6 +75,8 @@ Resources:
           KEY_NAME: !Ref KeyName
           ENV_VARS: !Ref EnvVars
           ADMIN_EMAIL: !Ref AdminEmail
+          CLOUDFLARE_API_KEY: !Ref CloudflareApiKey
+          CLOUDFLARE_ZONE_ID: !Ref CloudflareZoneId
       Code:
         ZipFile: |
           const { CloudFormationClient, CreateStackCommand, DeleteStackCommand, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
@@ -123,6 +132,18 @@ Resources:
                 {
                   ParameterKey: 'EnvVars',
                   ParameterValue: process.env.ENV_VARS,
+                },
+                {
+                  ParameterKey: 'CloudflareApiKey',
+                  ParameterValue: process.env.CLOUDFLARE_API_KEY,
+                },
+                {
+                  ParameterKey: 'CloudflareZoneId',
+                  ParameterValue: process.env.CLOUDFLARE_ZONE_ID,
+                },
+                {
+                  ParameterKey: 'DnsRecordName',
+                  ParameterValue: stackName,
                 },
               ];
 
