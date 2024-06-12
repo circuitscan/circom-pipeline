@@ -217,7 +217,7 @@ Resources:
                 source /home/ec2-user/.bashrc
 
                 # Run the job
-                node src/ec2-runner.js /home/ec2-user/event.json > ../stdout.txt 2> ../stderr.txt
+                node --max-old-space-size=1655300 src/ec2-runner.js /home/ec2-user/event.json > ../stdout.txt 2> ../stderr.txt
 
                 # Self-destruct
                 sudo -u ec2-user aws ec2 terminate-instances --instance-ids $INSTANCE_ID

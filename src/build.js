@@ -104,10 +104,12 @@ export async function build(event) {
       [circuitName]: event.payload.circuit,
     }, null, 2));
     const compilePromise = circomkit.compile(BUILD_NAME, event.payload.circuit);
-    monitorProcessMemory(event.payload.circomPath, 10000, (memoryUsage) => {
-      status.log(`Circom memory usage: ${memoryUsage} KB`);
+    monitorProcessMemory(event.payload.circomPath, 10000, async (memoryUsage) => {
+      await status.log(`Circom memory usage: ${memoryUsage} KB`, { memoryUsage });
     });
-    await compilePromise;
+    const compileResult = await compilePromise;
+    await status.log('Compilation complete', compileResult);
+    status.startMemoryLogs(10000);
     await status.log(`Downloading PTAU...`);
     const ptauPath = await circomkit.ptau(BUILD_NAME);
 
@@ -226,6 +228,7 @@ export async function build(event) {
       pkgSize: statSync(dirPkg + '.zip').size,
     }, null, 2));
     await uploadLargeFileToS3(pkgName + '/info.json', join(dirPkg, 'info.json'));
+    status.stopMemoryLogs();
     await status.log(`Complete.`);
   } catch(error) {
     await status.log(error.toString());
