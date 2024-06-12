@@ -5,7 +5,6 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dns-clean": "node -r dotenv/config dns-cleaner.js",
     "build": "docker build -t circuitscan_lambda_circom_v2 .",
     "dev": "docker run --env-file .env --rm -p 9001:8080 circuitscan_lambda_circom_v2:latest",
     "deploy": "aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 664190027399.dkr.ecr.us-west-2.amazonaws.com && docker tag circuitscan_lambda_circom_v2:latest 664190027399.dkr.ecr.us-west-2.amazonaws.com/circuitscan_lambda_circom_v2:latest && docker push 664190027399.dkr.ecr.us-west-2.amazonaws.com/circuitscan_lambda_circom_v2:latest",
@@ -27,8 +26,6 @@
     "@aws-sdk/lib-storage": "^3.576.0",
     "archiver": "^7.0.1",
     "circomkit": "^0.1.0",
-    "diff": "^5.2.0",
-    "pg": "^8.11.5",
     "snarkjs-v0.6.11": "npm:snarkjs@0.6.11",
     "snarkjs-v0.7.0": "npm:snarkjs@0.7.0",
     "snarkjs-v0.7.1": "npm:snarkjs@0.7.1",

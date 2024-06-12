@@ -31,6 +31,7 @@ import {
 export const BUILD_NAME = 'verify_circuit';
 const HARDHAT_IMPORT = 'import "hardhat/console.sol";';
 
+// TODO circom memory usage to status output too
 export async function build(event) {
   if(!/^[a-zA-Z0-9]{6,40}$/.test(event.payload.requestId))
     throw new Error('invalid_requestId');
