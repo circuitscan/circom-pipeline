@@ -107,6 +107,7 @@ export async function build(event) {
     monitorProcessMemory(event.payload.circomPath, 10000, async (memoryUsage) => {
       await status.log(`Circom memory usage: ${memoryUsage} KB`, { memoryUsage });
     });
+    // TODO this isn't the stdout/stderr, need those for display on frontend
     const compileResult = await compilePromise;
     await status.log('Compilation complete', compileResult);
     status.startMemoryLogs(10000);
@@ -211,12 +212,12 @@ export async function build(event) {
 
     // Circom sources to S3
     await zipDirectory(dirCircuits, dirPkg + '-source.zip');
-    await uploadLargeFileToS3(pkgName + '/source.zip', dirPkg + '-source.zip');
+    await uploadLargeFileToS3(`build/${pkgName}/source.zip`, dirPkg + '-source.zip');
     // Solidity verifier to s3
-    await uploadLargeFileToS3(pkgName + '/verifier.sol', contractPath);
+    await uploadLargeFileToS3(`build/${pkgName}/verifier.sol`, contractPath);
     // Entire package to s3
     await zipDirectory(dirPkg, dirPkg + '.zip');
-    await uploadLargeFileToS3(pkgName + '/pkg.zip', dirPkg + '.zip');
+    await uploadLargeFileToS3(`build/${pkgName}/pkg.zip`, dirPkg + '.zip');
     // Info file to s3
     writeFileSync(join(dirPkg, 'info.json'), JSON.stringify({
       circomPath: event.payload.circomPath,
@@ -227,7 +228,7 @@ export async function build(event) {
       sourceSize: statSync(dirPkg + '-source.zip').size,
       pkgSize: statSync(dirPkg + '.zip').size,
     }, null, 2));
-    await uploadLargeFileToS3(pkgName + '/info.json', join(dirPkg, 'info.json'));
+    await uploadLargeFileToS3(`build/${pkgName}/info.json`, join(dirPkg, 'info.json'));
     status.stopMemoryLogs();
     await status.log(`Complete.`);
   } catch(error) {
