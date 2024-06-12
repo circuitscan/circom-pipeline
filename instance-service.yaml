@@ -10,7 +10,7 @@ Parameters:
   AssocBucket:
     Type: String
     Description: S3 Bucket in which to store package/address associations
-    Default: blob.circuitscan.org
+    Default: circuitscan-blob
   AllowedInstances:
     Type: String
     Description: Comma separated list of instance types (no spaces)
@@ -191,7 +191,7 @@ Resources:
               UserData: Buffer.from(`#!/bin/bash
                 yum install nodejs -y
                 yum install git -y
-                curl https://${process.env.BLOB_BUCKET}/payload/${body.payload.requestId}.json > /home/ec2-user/event.json
+                curl https://${process.env.BLOB_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/payload/${body.payload.requestId}.json > /home/ec2-user/event.json
                 mkdir /home/ec2-user/.aws
                 REGION=$(ec2-metadata -z | awk '{print $2}' | sed 's/[a-z]$//')
                 echo "[default]\nregion = $REGION" > /home/ec2-user/.aws/config
