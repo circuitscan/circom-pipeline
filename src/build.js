@@ -21,6 +21,7 @@ import {
   uploadLargeFileToS3,
   zipDirectory,
   mkdirpSync,
+  monitorProcessMemory,
 } from './utils.js';
 import {StatusReporter} from './StatusReporter.js';
 import {
@@ -31,7 +32,6 @@ import {
 export const BUILD_NAME = 'verify_circuit';
 const HARDHAT_IMPORT = 'import "hardhat/console.sol";';
 
-// TODO circom memory usage to status output too
 export async function build(event) {
   if(!/^[a-zA-Z0-9]{6,40}$/.test(event.payload.requestId))
     throw new Error('invalid_requestId');
@@ -103,7 +103,11 @@ export async function build(event) {
     writeFileSync(join(dirPkg, 'circuits.json'), JSON.stringify({
       [circuitName]: event.payload.circuit,
     }, null, 2));
-    await circomkit.compile(BUILD_NAME, event.payload.circuit);
+    const compilePromise = circomkit.compile(BUILD_NAME, event.payload.circuit);
+    monitorProcessMemory(event.payload.circomPath, 10000, (memoryUsage) => {
+      status.log(`Circom memory usage: ${memoryUsage} KB`);
+    });
+    await compilePromise;
     await status.log(`Downloading PTAU...`);
     const ptauPath = await circomkit.ptau(BUILD_NAME);
 

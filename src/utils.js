@@ -31,6 +31,38 @@ export function executeCommand(command) {
   });
 }
 
+/**
+ * Finds a process by name and invokes a callback with updates about its memory usage every 10 seconds.
+ * @param {string} processName - The name of the process to monitor.
+ * @param {number} timeout - Milliseconds to wait between checking.
+ * @param {function} callback - The callback function to invoke with memory usage updates.
+ */
+export function monitorProcessMemory(processName, timeout, callback) {
+    function getMemoryUsage() {
+        exec(`ps aux | grep ${processName} | grep -v grep | awk '{sum += $6} END {print sum}'`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error executing command: ${error.message}`);
+                return;
+            }
+            if (stderr) {
+                console.error(`stderr: ${stderr}`);
+                return;
+            }
+
+            const memoryUsage = parseInt(stdout.trim(), 10);
+            if (isNaN(memoryUsage)) {
+                console.log(`Process ${processName} not found.`);
+                return;
+            }
+
+            callback(memoryUsage);
+            setTimeout(getMemoryUsage, timeout);
+        });
+    }
+
+    setTimeout(getMemoryUsage, timeout);
+}
+
 export function downloadBinaryFile(url, outputPath) {
   return new Promise((resolve, reject) => {
     const file = createWriteStream(outputPath);
