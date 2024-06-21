@@ -80,6 +80,7 @@ export async function build(event) {
       dirBuild,
       circomPath: event.payload.circomPath,
       protocol: event.payload.protocol,
+      verbose: true,
     };
 
     // Export to package
@@ -92,6 +93,10 @@ export async function build(event) {
     }, null, 2));
 
     const circomkit = new Circomkit(config);
+    // Redirect logs to status
+    circomkit.log = async (msg) => {
+      await status.log('Circomkit Log', { msg });
+    };
     const wasmPath = join('build', BUILD_NAME, BUILD_NAME + '_js', BUILD_NAME + '.wasm');
     const pkeyPath = join('build', BUILD_NAME, event.payload.protocol + '_pkey.zkey');
     const fullPkeyPath = join(dirPkg, pkeyPath);
@@ -105,11 +110,9 @@ export async function build(event) {
     }, null, 2));
     const compilePromise = circomkit.compile(BUILD_NAME, event.payload.circuit);
     monitorProcessMemory(event.payload.circomPath, 10000, async (memoryUsage) => {
-      await status.log(`Circom memory usage: ${memoryUsage} KB`, { memoryUsage });
+      await status.log(`Circom memory usage`, { memoryUsage });
     });
-    // TODO this isn't the stdout/stderr, need those for display on frontend
-    const compileResult = await compilePromise;
-    await status.log('Compilation complete', compileResult);
+    await compilePromise;
     status.startMemoryLogs(10000);
     await status.log(`Downloading PTAU...`);
     const ptauPath = await circomkit.ptau(BUILD_NAME);
@@ -220,6 +223,7 @@ export async function build(event) {
     await uploadLargeFileToS3(`build/${pkgName}/pkg.zip`, dirPkg + '.zip');
     // Info file to s3
     writeFileSync(join(dirPkg, 'info.json'), JSON.stringify({
+      requestId: event.payload.requestId,
       circomPath: event.payload.circomPath,
       snarkjsVersion,
       protocol: event.payload.protocol,

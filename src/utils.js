@@ -42,7 +42,7 @@ export function getDiskUsage() {
         reject(`stderr: ${stderr}`);
         return;
       }
-      resolve(stdout);
+      resolve(parseDfOutput(stdout));
     });
   });
 }
@@ -77,6 +77,32 @@ export function monitorProcessMemory(processName, timeout, callback) {
     }
 
     setTimeout(getMemoryUsage, timeout);
+}
+
+function parseDfOutput(dfOutput) {
+  // Split the output into lines
+  const lines = dfOutput.trim().split('\n');
+
+  // The first line contains the headers
+  const headers = lines[0].trim().split(/\s+/);
+
+  // The rest of the lines contain the data
+  const dataLines = lines.slice(1);
+
+  // Create an array to hold the final JSON objects
+  const jsonOutput = dataLines.map(line => {
+    const columns = line.trim().split(/\s+/);
+
+    // Create an object with header names as keys and corresponding columns as values
+    let obj = {};
+    headers.forEach((header, index) => {
+      obj[header] = columns[index];
+    });
+
+    return obj;
+  });
+
+  return jsonOutput;
 }
 
 export function downloadBinaryFile(url, outputPath) {
