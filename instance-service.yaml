@@ -171,6 +171,8 @@ Resources:
                 errorMessage: 'Invalid payload.requestId',
               }),
             };
+            // TODO verify api-key against s3, store request id in `api-key/<key>.json`
+            // { account: <0x1234>, requests: [ { id: <reqid>, time: <stamp> ] }
 
             await sendEmail({
               requestId: body.payload.requestId,

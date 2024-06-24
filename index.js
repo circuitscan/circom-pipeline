@@ -1,5 +1,6 @@
 import {build} from './src/build.js';
 
+// TODO verify api-key against s3, store request id in `api-key/<key>.json`
 export async function handler(event) {
   if('body' in event) {
     // Running on AWS
