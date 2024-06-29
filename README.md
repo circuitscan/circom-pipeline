@@ -48,6 +48,10 @@ $ vim .env
 $ yarn test
 ```
 
+## References
+
+* [Best Practices for Large Circuits](https://hackmd.io/V-7Aal05Tiy-ozmzTGBYPA?view)
+
 ## License
 
 MIT
