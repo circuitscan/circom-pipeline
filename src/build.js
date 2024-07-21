@@ -236,6 +236,7 @@ export async function build(event) {
     status.stopMemoryLogs();
     await status.log(`Complete.`);
   } catch(error) {
+    // TODO error data should be passed as data parameter so cli can halt on error
     await status.log(error.toString());
     throw error;
   }

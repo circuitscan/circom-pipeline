@@ -5,7 +5,7 @@ Parameters:
   ECRRepoName:
     Type: String
     Description: The name of the ECR repository
-    Default: circuitscan_lambda_circom_v2
+    Default: circuitscan_lambda_circom
   ECRImageTag:
     Type: String
     Description: The tag of the ECR image
@@ -13,11 +13,15 @@ Parameters:
   BlobURL:
     Type: String
     Description: For file storage on backblaze
-    Default: https://blob.circuitscan.org/
+    Default: https://circuitscan-artifacts.s3.us-west-2.amazonaws.com/
   AssocBucket:
     Type: String
     Description: S3 Bucket in which to store package/address associations
-    Default: blob.circuitscan.org
+    Default: circuitscan-artifacts
+  MaxMemory:
+    Type: String
+    Description: Lambda memory limit
+    Default: 10240
 
 Resources:
   LambdaExecutionRole:
@@ -73,7 +77,7 @@ Resources:
       PackageType: Image
       Code:
         ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepoName}:${ECRImageTag}"
-      MemorySize: 10240
+      MemorySize: !Ref MaxMemory
       Timeout: 600
       Environment:
         Variables:
