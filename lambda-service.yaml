@@ -22,6 +22,10 @@ Parameters:
     Type: String
     Description: Lambda memory limit
     Default: 10240
+  MaxStorage:
+    Type: String
+    Description: Lambda /tmp size limit
+    Default: 10240
 
 Resources:
   LambdaExecutionRole:
@@ -78,6 +82,8 @@ Resources:
       Code:
         ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepoName}:${ECRImageTag}"
       MemorySize: !Ref MaxMemory
+      EphemeralStorage:
+        Size: !Ref MaxStorage
       Timeout: 600
       Environment:
         Variables:
