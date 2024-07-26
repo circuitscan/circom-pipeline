@@ -98,6 +98,21 @@ export async function build(event) {
     circomkit.log = async (msg) => {
       await status.log('Circomkit Log', { msg });
     };
+    circomkit.log.debug = async (msg) => {
+      await status.log('Circomkit Debug Log', { msg });
+    };
+    circomkit.log.info = async (msg) => {
+      await status.log('Circomkit Info Log', { msg });
+    };
+    circomkit.log.warn = async (msg) => {
+      await status.log('Circomkit Warn Log', { msg });
+    };
+    circomkit.log.error = async (msg) => {
+      await status.log('Circomkit Error Log', { msg });
+    };
+    circomkit.log.trace = async (msg) => {
+      await status.log('Circomkit Trace Log', { msg });
+    };
     const wasmPath = join('build', BUILD_NAME, BUILD_NAME + '_js', BUILD_NAME + '.wasm');
     const pkeyPath = join('build', BUILD_NAME, event.payload.protocol + '_pkey.zkey');
     const fullPkeyPath = join(dirPkg, pkeyPath);
@@ -118,10 +133,11 @@ export async function build(event) {
     await status.log(`Downloading PTAU...`);
     const ptauPath = await circomkit.ptau(BUILD_NAME);
 
+    const hasHttpsZkey = event.payload.finalZkey.startsWith('https');
     if(config.protocol === 'groth16' && event.payload.finalZkey) {
       // Using supplied setup
       let pkeyData;
-      if(event.payload.finalZkey.startsWith('https')) {
+      if(hasHttpsZkey) {
         // Large zkeys fetched over HTTP
         await status.log(`Downloading finalZkey...`);
         await downloadBinaryFile(event.payload.finalZkey, fullPkeyPath);
@@ -232,6 +248,7 @@ export async function build(event) {
       soliditySize: statSync(contractPath).size,
       sourceSize: statSync(dirPkg + '-source.zip').size,
       pkgSize: statSync(dirPkg + '.zip').size,
+      finalZKey: hasHttpsZkey ? event.payload.finalZkey : undefined,
     }, null, 2));
     await uploadLargeFileToS3(`build/${pkgName}/info.json`, join(dirPkg, 'info.json'));
     status.stopMemoryLogs();
