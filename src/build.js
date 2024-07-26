@@ -80,6 +80,7 @@ export async function build(event) {
       dirBuild,
       circomPath: event.payload.circomPath,
       protocol: event.payload.protocol,
+      prime: event.payload.prime,
       verbose: true,
     };
 
