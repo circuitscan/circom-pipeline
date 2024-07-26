@@ -25,7 +25,7 @@
     "@aws-sdk/client-s3": "^3.576.0",
     "@aws-sdk/lib-storage": "^3.576.0",
     "archiver": "^7.0.1",
-    "circomkit": "numtel/circomkit#skip_instantiation_test",
+    "circomkit": "numtel/circomkit#custom_templates",
     "snarkjs-v0.6.11": "npm:snarkjs@0.6.11",
     "snarkjs-v0.7.0": "npm:snarkjs@0.7.0",
     "snarkjs-v0.7.1": "npm:snarkjs@0.7.1",
