@@ -35,7 +35,8 @@ const HARDHAT_IMPORT = 'import "hardhat/console.sol";';
 export async function build(event) {
   if(!/^[a-zA-Z0-9]{6,40}$/.test(event.payload.requestId))
     throw new Error('invalid_requestId');
-  const circuitName = event.payload.circuit.template.toLowerCase();
+  // mainTemplateName is not a circomkit standard property, but provided by the CLI
+  const circuitName = event.payload.circuit.mainTemplateName.toLowerCase();
   const snarkjsVersion = event.payload.snarkjsVersion || SNARKJS_VERSIONS[0];
   if(SNARKJS_VERSIONS.indexOf(snarkjsVersion) === -1)
     throw new Error('invalid_snarkjs_version');
