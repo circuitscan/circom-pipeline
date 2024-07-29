@@ -61,13 +61,16 @@ export async function build(event) {
 
   // Be sure to put error messages in the status log
   try {
-    const dirPtau = tmpdir();
+    // bn128 primes are standard from polygon hermez but other primes are generated on the fly so they must be included in the package
+    const generatePtau = event.payload.prime !== 'bn128';
     const dirPkg = join(tmpdir(), pkgName);
+    const dirPtau = !generatePtau ? tmpdir() : join(dirPkg, 'ptau');
     const dirCircuits = join(dirPkg, 'circuits');
     const dirBuild = join(dirPkg, 'build');
     mkdirSync(dirPkg);
     mkdirSync(dirCircuits);
     mkdirSync(dirBuild);
+    if(generatePtau) mkdirSync(dirPtau);
 
     for(let file of Object.keys(event.payload.files)) {
       mkdirpSync(dirname(join(dirCircuits, file)));
@@ -130,10 +133,29 @@ export async function build(event) {
     });
     await compilePromise;
     status.startMemoryLogs(10000);
-    await status.log(`Downloading PTAU...`);
-    const ptauPath = await circomkit.ptau(BUILD_NAME);
 
-    const hasHttpsZkey = event.payload.finalZkey.startsWith('https');
+    let ptauPath;
+    // TODO provide method to supply a ptau file
+    if(generatePtau) {
+      const circuitInfo = await circomkit.info(BUILD_NAME);
+      // smallest p such that 2^p >= n
+      let ptauSize = Math.ceil(Math.log2(circuitInfo.constraints));
+      if(ptauSize < 8) ptauSize = 8;
+      if(ptauSize > 28) throw new Error('too_many_constraints');
+      const ptauName = `generated_${ptauSize}.ptau`;
+      ptauPath = circomkit.path.ofPtau(ptauName);
+      await status.log(`Generating PTAU of size 2^${ptauSize} with random entropy...`);
+      const initPtau = join(tmpdir(), 'init.ptau');
+      // TODO support generating PTAUs for other primes
+//       await snarkjs.powersOfTau.newAccumulator(event.payload.prime, ptauSize, initPtau, circomkit.log);
+      console.error('NYI: Generating PTAU');
+      process.exit(1);
+    } else {
+      await status.log(`Downloading PTAU...`);
+      ptauPath = await circomkit.ptau(BUILD_NAME);
+    }
+
+    const hasHttpsZkey = event.payload.finalZkey && event.payload.finalZkey.startsWith('https');
     if(config.protocol === 'groth16' && event.payload.finalZkey) {
       // Using supplied setup
       let pkeyData;
