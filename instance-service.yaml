@@ -55,6 +55,11 @@ Resources:
                 Resource:
                   - !Sub arn:aws:s3:::${AssocBucket}/*
                   - !Sub arn:aws:s3:::${AssocBucket}
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource:
+                  - !GetAtt InstanceRole.Arn
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -92,6 +97,33 @@ Resources:
     Properties:
       UserName: !Ref InstanceIAMUser
 
+  InstanceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: 'S3UploadPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:PutObject"
+                Resource:
+                  - !Sub arn:aws:s3:::${AssocBucket}/*
+                  - !Sub arn:aws:s3:::${AssocBucket}
+
+  InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Roles:
+        - !Ref InstanceRole
 
   StartStopLambdaFunction:
     Type: 'AWS::Lambda::Function'
@@ -110,6 +142,7 @@ Resources:
           ALLOWED_INSTANCES: !Ref AllowedInstances
           INSTANCE_ACCESS_ID: !Ref InstanceAccessKey
           INSTANCE_ACCESS_SECRET: !GetAtt InstanceAccessKey.SecretAccessKey
+          INSTANCE_PROFILE: !Ref InstanceProfile
           CLONE_URL: !Ref CloneUrl
 
       Code:
@@ -188,11 +221,15 @@ Resources:
             await ec2Client.send(new RunInstancesCommand({
               ImageId: 'ami-01cd4de4363ab6ee8', // amazon linux 23 us-west-2
               InstanceType: body.payload.instanceType,
+              IamInstanceProfile: {
+                Name: process.env.INSTANCE_PROFILE,
+              },
               MinCount: 1,
               MaxCount: 1,
               UserData: Buffer.from(`#!/bin/bash
                 yum install nodejs -y
                 yum install git -y
+                yum install -y aws-cli
                 curl https://${process.env.BLOB_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/payload/${body.payload.requestId}.json > /home/ec2-user/event.json
                 mkdir /home/ec2-user/.aws
                 REGION=$(ec2-metadata -z | awk '{print $2}' | sed 's/[a-z]$//')
@@ -221,6 +258,9 @@ Resources:
                 # Run the job
                 node --max-old-space-size=1655300 src/ec2-runner.js /home/ec2-user/event.json > ../stdout.txt 2> ../stderr.txt
 
+                # Report stderr/stdout to indicate process completion (success or failure)
+                aws s3 cp ../stdout.txt s3://${process.env.BLOB_BUCKET}/instance/${body.payload.requestId}/stdout.txt
+                aws s3 cp ../stderr.txt s3://${process.env.BLOB_BUCKET}/instance/${body.payload.requestId}/stderr.txt
                 # Self-destruct
                 sudo -u ec2-user aws ec2 terminate-instances --instance-ids $INSTANCE_ID
               `).toString('base64'),
