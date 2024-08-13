@@ -128,7 +128,7 @@ Resources:
   StartStopLambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
-      FunctionName: 'StartStopInstances'
+      FunctionName: !Sub "${AWS::StackName}-StartStopInstances"
       Handler: 'index.handler'
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: 'nodejs20.x'

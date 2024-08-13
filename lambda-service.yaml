@@ -76,7 +76,7 @@ Resources:
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub "${ECRRepoName}-lambda-function"
+      FunctionName: !Sub "${AWS::StackName}-lambda-function"
       Role: !GetAtt LambdaExecutionRole.Arn
       PackageType: Image
       Code:
