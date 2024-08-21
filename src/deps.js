@@ -11,6 +11,7 @@ export const SNARKJS_VERSIONS = [
 
 // Keep synced with Dockerfile
 export const CIRCOM_VERSIONS = [
+  '2.1.9',
   '2.1.8',
   '2.1.7',
   '2.1.6',

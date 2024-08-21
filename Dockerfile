@@ -20,6 +20,7 @@ RUN curl -Lo /tmp/circom-v2.1.5 https://github.com/iden3/circom/releases/downloa
 RUN curl -Lo /tmp/circom-v2.1.6 https://github.com/iden3/circom/releases/download/v2.1.6/circom-linux-amd64
 RUN curl -Lo /tmp/circom-v2.1.7 https://github.com/iden3/circom/releases/download/v2.1.7/circom-linux-amd64
 RUN curl -Lo /tmp/circom-v2.1.8 https://github.com/iden3/circom/releases/download/v2.1.8/circom-linux-amd64
+RUN curl -Lo /tmp/circom-v2.1.9 https://github.com/iden3/circom/releases/download/v2.1.9/circom-linux-amd64
 
 # Make the executables... well, executable
 RUN chmod +x /tmp/circom-*
