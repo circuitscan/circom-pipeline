@@ -177,7 +177,7 @@ export async function build(event) {
       );
       if(!result) {
         await status.log(`Invalid finalZkey!`);
-        throw new Error('invalid_zkey');
+        process.exit(1);
       }
     } else {
       // This section adapted from circomkit so it can run using custom snarkjs version
