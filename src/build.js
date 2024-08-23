@@ -84,6 +84,7 @@ export async function build(event) {
       circomPath: event.payload.circomPath,
       protocol: event.payload.protocol,
       prime: event.payload.prime,
+      optimization: event.payload.optimization,
       verbose: true,
     };
 
