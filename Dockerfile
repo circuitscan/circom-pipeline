@@ -1,9 +1,13 @@
 FROM public.ecr.aws/lambda/nodejs:20
 
 COPY package.json ${LAMBDA_TASK_ROOT}/
+COPY yarn.lock ${LAMBDA_TASK_ROOT}/
+
+# Install pnpm
+RUN npm install -g yarn
 
 # Install NPM dependencies
-RUN npm install
+RUN yarn install --prod
 
 # Set the CMD to your handler
 CMD ["index.handler"]
@@ -27,6 +31,9 @@ RUN chmod +x /tmp/circom-*
 
 # Move the executables to a directory included in the PATH
 RUN mv /tmp/circom-* /usr/local/bin
+
+# src/utils.js#monitorProcessMemory uses ps
+RUN dnf install procps -y
 
 COPY template/* ${LAMBDA_TASK_ROOT}/template/
 # Copy app source last for faster rebuilds

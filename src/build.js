@@ -63,6 +63,7 @@ export async function build(event) {
   try {
     // bn128 primes are standard from polygon hermez but other primes are generated on the fly so they must be included in the package
     const generatePtau = event.payload.prime !== 'bn128';
+    const forcePtauSize = event.payload.ptauSize;
     const dirPkg = join(tmpdir(), pkgName);
     const dirPtau = !generatePtau ? tmpdir() : join(dirPkg, 'ptau');
     const dirCircuits = join(dirPkg, 'circuits');
@@ -84,7 +85,7 @@ export async function build(event) {
       circomPath: event.payload.circomPath,
       protocol: event.payload.protocol,
       prime: event.payload.prime,
-      optimization: event.payload.optimization,
+      optimization: isNaN(event.payload.optimization) ? 2 : event.payload.optimization,
       verbose: true,
     };
 
@@ -140,7 +141,7 @@ export async function build(event) {
     if(generatePtau) {
       const circuitInfo = await circomkit.info(BUILD_NAME);
       // smallest p such that 2^p >= n
-      let ptauSize = Math.ceil(Math.log2(circuitInfo.constraints));
+      let ptauSize = forcePtauSize || Math.ceil(Math.log2(circuitInfo.constraints));
       if(ptauSize < 8) ptauSize = 8;
       if(ptauSize > 28) throw new Error('too_many_constraints');
       const ptauName = `generated_${ptauSize}.ptau`;
@@ -150,6 +151,10 @@ export async function build(event) {
       // TODO support generating PTAUs for other primes
 //       await snarkjs.powersOfTau.newAccumulator(event.payload.prime, ptauSize, initPtau, circomkit.log);
       console.error('NYI: Generating PTAU');
+      process.exit(1);
+    } else if(forcePtauSize) {
+      ptauPath = circomkit.path.ofPtau(ptauName);
+      // TODO allow specifying which PTAU size to download
       process.exit(1);
     } else {
       await status.log(`Downloading PTAU...`);
@@ -178,6 +183,7 @@ export async function build(event) {
       );
       if(!result) {
         await status.log(`Invalid finalZkey!`);
+        console.log('invalidzkey', ptauPath, fullPkeyPath);
         process.exit(1);
       }
     } else {
