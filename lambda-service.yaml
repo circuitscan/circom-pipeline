@@ -18,6 +18,10 @@ Parameters:
     Type: String
     Description: S3 Bucket in which to store package/address associations
     Default: circuitscan-artifacts
+  APIKeyBucketName:
+    Description: Name of the new private S3 bucket (Was created by main server stack)
+    Type: String
+    Default: circuitscan-apikeys
   MaxMemory:
     Type: String
     Description: Lambda memory limit
@@ -51,6 +55,18 @@ Resources:
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
                 Resource: "*"
+        - PolicyName: APIKeyPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:PutObject"
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                Resource:
+                  - !Sub arn:aws:s3:::${APIKeyBucketName}/*
+                  - !Sub arn:aws:s3:::${APIKeyBucketName}
   InstanceIAMUser:
     Type: 'AWS::IAM::User'
     Properties:
@@ -92,6 +108,7 @@ Resources:
           BB_REGION: !Ref AWS::Region
           BLOB_BUCKET: !Ref AssocBucket
           BLOB_URL: !Ref BlobURL
+          APIKEY_BUCKET: !Ref APIKeyBucketName
 
   LambdaFunctionUrl:
     Type: AWS::Lambda::Url

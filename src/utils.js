@@ -3,7 +3,7 @@ import {mkdirSync, createWriteStream, createReadStream} from 'node:fs';
 import {isAbsolute, resolve, sep} from 'node:path';
 import {exec} from 'node:child_process';
 
-import {S3Client, PutObjectCommand} from '@aws-sdk/client-s3';
+import {S3Client, PutObjectCommand, GetObjectCommand} from '@aws-sdk/client-s3';
 import {Upload} from '@aws-sdk/lib-storage';
 import archiver from 'archiver';
 
@@ -210,4 +210,55 @@ export function mkdirpSync(targetDir) {
 
     return curDir;
   }, initDir);
+}
+
+export async function transformS3Json(bucketName, key, transformCallback) {
+  // This function uses the default env vars e.g AWS_ACCESS_KEY_ID...
+  const s3Client = new S3Client();
+  // Load the existing JSON file from S3
+  const getObjectParams = {
+      Bucket: bucketName,
+      Key: key,
+  };
+
+  let jsonData;
+
+  try {
+      const data = await s3Client.send(new GetObjectCommand(getObjectParams));
+      // Convert stream to string
+      const jsonString = await streamToString(data.Body);
+      // Parse the JSON data
+      jsonData = JSON.parse(jsonString);
+  } catch (error) {
+      if (error.name === 'NoSuchKey') {
+          jsonData = {};
+      } else {
+          throw error;
+      }
+  }
+
+  // Transform the data using the provided callback
+  const transformedData = await transformCallback(jsonData);
+
+  // Convert the transformed data back to JSON string
+  const transformedJsonString = JSON.stringify(transformedData);
+
+  // Save the new version back to S3
+  const putObjectParams = {
+      Bucket: bucketName,
+      Key: key,
+      Body: transformedJsonString,
+      ContentType: 'application/json',
+  };
+
+  await s3Client.send(new PutObjectCommand(putObjectParams));
+}
+
+function streamToString(stream) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        stream.on('data', (chunk) => chunks.push(chunk));
+        stream.on('error', reject);
+        stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    });
 }

@@ -8,7 +8,7 @@ async function eventFromFile() {
   await uploadJsonToS3(
     process.env.BLOB_BUCKET,
     `instance-response/${payload.requestId}.json`,
-    await handler({ payload }),
+    await handler({ payload }, { ignoreApiKey: true }),
   );
   globalThis.curve_bn128 && await globalThis.curve_bn128.terminate();
 }
