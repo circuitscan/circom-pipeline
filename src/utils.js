@@ -3,7 +3,7 @@ import {mkdirSync, createWriteStream, createReadStream} from 'node:fs';
 import {isAbsolute, resolve, sep} from 'node:path';
 import {exec} from 'node:child_process';
 
-import {S3Client, PutObjectCommand, GetObjectCommand} from '@aws-sdk/client-s3';
+import {S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand} from '@aws-sdk/client-s3';
 import {Upload} from '@aws-sdk/lib-storage';
 import archiver from 'archiver';
 
@@ -210,6 +210,21 @@ export function mkdirpSync(targetDir) {
 
     return curDir;
   }, initDir);
+}
+
+export async function s3KeyExists(Bucket, Key) {
+  try {
+    const data = await s3Client.send(new HeadObjectCommand({
+      Bucket, Key
+    }));
+  } catch (error) {
+    if (error.name === 'NotFound') {
+      return false;
+    } else {
+      throw error;
+    }
+  }
+  return true;
 }
 
 export async function transformS3Json(bucketName, key, transformCallback) {

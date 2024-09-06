@@ -22,6 +22,7 @@ import {
   zipDirectory,
   mkdirpSync,
   monitorProcessMemory,
+  s3KeyExists,
 } from './utils.js';
 import {StatusReporter} from './StatusReporter.js';
 import {
@@ -35,6 +36,8 @@ const HARDHAT_IMPORT = 'import "hardhat/console.sol";';
 export async function build(event) {
   if(!/^[a-zA-Z0-9]{6,40}$/.test(event.payload.requestId))
     throw new Error('invalid_requestId');
+  if(s3KeyExists(process.env.BLOB_BUCKET, `payload/${event.payload.requestId}.json`))
+    throw new Error('duplicate_requestId');
   const circuitName = event.payload.circuit.template.toLowerCase();
   const snarkjsVersion = event.payload.snarkjsVersion || SNARKJS_VERSIONS[0];
   if(SNARKJS_VERSIONS.indexOf(snarkjsVersion) === -1)

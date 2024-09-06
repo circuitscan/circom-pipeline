@@ -156,7 +156,7 @@ Resources:
 
       Code:
         ZipFile: |
-          const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+          const { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
           const { EC2Client, RunInstancesCommand } = require("@aws-sdk/client-ec2");
           const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
 
@@ -171,6 +171,21 @@ Resources:
                   stream.on('error', reject);
                   stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
               });
+          }
+
+          async function s3KeyExists(Bucket, Key) {
+            try {
+              const data = await s3Client.send(new HeadObjectCommand({
+                Bucket, Key
+              }));
+            } catch (error) {
+              if (error.name === 'NotFound') {
+                return false;
+              } else {
+                throw error;
+              }
+            }
+            return true;
           }
 
           async function transformS3Json(bucketName, key, transformCallback) {
@@ -260,6 +275,13 @@ Resources:
               body: JSON.stringify({
                 errorType: 'bad_request',
                 errorMessage: 'Invalid payload.requestId',
+              }),
+            };
+            if(s3KeyExists(process.env.BLOB_BUCKET, `payload/${body.payload.requestId}.json`)) return {
+              statusCode: 400,
+              body: JSON.stringify({
+                errorType: 'bad_request',
+                errorMessage: 'Duplicate payload.requestId',
               }),
             };
             try {
