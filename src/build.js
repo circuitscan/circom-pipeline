@@ -22,8 +22,10 @@ import {
   zipDirectory,
   mkdirpSync,
   monitorProcessMemory,
+  execPromise,
   s3KeyExists,
 } from './utils.js';
+import {getPtauName, downloadPtau} from './ptau.js';
 import {StatusReporter} from './StatusReporter.js';
 import {
   SNARKJS_VERSIONS,
@@ -33,10 +35,10 @@ import {
 export const BUILD_NAME = 'verify_circuit';
 const HARDHAT_IMPORT = 'import "hardhat/console.sol";';
 
-export async function build(event) {
+export async function build(event, options) {
   if(!/^[a-zA-Z0-9]{6,40}$/.test(event.payload.requestId))
     throw new Error('invalid_requestId');
-  if(s3KeyExists(process.env.BLOB_BUCKET, `payload/${event.payload.requestId}.json`))
+  if(!options.ignoreApiKey && await s3KeyExists(process.env.BLOB_BUCKET, `payload/${event.payload.requestId}.json`))
     throw new Error('duplicate_requestId');
   const circuitName = event.payload.circuit.template.toLowerCase();
   const snarkjsVersion = event.payload.snarkjsVersion || SNARKJS_VERSIONS[0];
@@ -44,6 +46,7 @@ export async function build(event) {
     throw new Error('invalid_snarkjs_version');
   const snarkjsPkgName = `snarkjs-v${snarkjsVersion}`;
   const snarkjs = await import(snarkjsPkgName);
+  const snarkjsPkg = JSON.parse(readFileSync(`node_modules/${snarkjsPkgName}/package.json`, 'utf8'));
   if(['groth16', 'fflonk', 'plonk'].indexOf(event.payload.protocol) === -1)
     throw new Error('invalid_protocol');
   if(typeof event.payload.files !== 'object')
@@ -60,6 +63,9 @@ export async function build(event) {
     separator: '-',
   })}`;
   const status = new StatusReporter(process.env.BLOB_BUCKET, `status/${event.payload.requestId}.json`);
+  const circomVersion = await execPromise(`${event.payload.circomPath} --version`);
+  await status.log(`Using ${circomVersion.stdout}`);
+  await status.log(`Using snarkjs@${snarkjsPkg.version}`);
   await status.log(`Compiling ${pkgName}...`);
 
   // Be sure to put error messages in the status log
@@ -156,9 +162,12 @@ export async function build(event) {
       console.error('NYI: Generating PTAU');
       process.exit(1);
     } else if(forcePtauSize) {
+      if(isNaN(forcePtauSize) || forcePtauSize < 8 || forcePtauSize > 28)
+        throw new error('invalid_ptau_size');
+      const ptauName = getPtauName(forcePtauSize);
       ptauPath = circomkit.path.ofPtau(ptauName);
-      // TODO allow specifying which PTAU size to download
-      process.exit(1);
+      await status.log(`Downloading ${ptauName}...`);
+      await downloadPtau(ptauName, ptauPath);
     } else {
       await status.log(`Downloading PTAU...`);
       ptauPath = await circomkit.ptau(BUILD_NAME);
@@ -170,7 +179,7 @@ export async function build(event) {
       let pkeyData;
       if(hasHttpsZkey) {
         // Large zkeys fetched over HTTP
-        await status.log(`Downloading finalZkey...`);
+        await status.log(`Downloading finalZkey ${event.payload.finalZkey}...`);
         await downloadBinaryFile(event.payload.finalZkey, fullPkeyPath);
       } else {
         // Small ones can be sent base64 encoded
@@ -183,11 +192,11 @@ export async function build(event) {
         join(dirBuild, BUILD_NAME, BUILD_NAME + '.r1cs'),
         ptauPath,
         fullPkeyPath,
+        circomkit.log,
       );
       if(!result) {
         await status.log(`Invalid finalZkey!`);
-        console.log('invalidzkey', ptauPath, fullPkeyPath);
-        process.exit(1);
+        throw new Error('invalid_finalZkey');
       }
     } else {
       // This section adapted from circomkit so it can run using custom snarkjs version

@@ -47,6 +47,15 @@ export function getDiskUsage() {
   });
 }
 
+export function execPromise(cmd) {
+  return new Promise((resolve, reject) => {
+    exec(cmd, (error, stdout, stderr) => {
+      if(error) reject(error);
+      else resolve({stderr, stdout});
+    });
+  });
+}
+
 /**
  * Finds a process by name and invokes a callback with updates about its memory usage every 10 seconds.
  * @param {string} processName - The name of the process to monitor.

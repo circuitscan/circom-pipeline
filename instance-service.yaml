@@ -277,7 +277,7 @@ Resources:
                 errorMessage: 'Invalid payload.requestId',
               }),
             };
-            if(s3KeyExists(process.env.BLOB_BUCKET, `payload/${body.payload.requestId}.json`)) return {
+            if(await s3KeyExists(process.env.BLOB_BUCKET, `payload/${body.payload.requestId}.json`)) return {
               statusCode: 400,
               body: JSON.stringify({
                 errorType: 'bad_request',

@@ -24,7 +24,7 @@ export async function handler(event, options) {
     // Perform the action
     switch(event.payload.action) {
       case 'build':
-        return await build(event);
+        return await build(event, options);
       default:
         throw new Error('invalid_command');
     }
