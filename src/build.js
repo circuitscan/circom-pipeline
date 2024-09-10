@@ -7,8 +7,8 @@ import {
   renameSync,
   rmSync,
 } from 'node:fs';
-import {fileURLToPath} from 'node:url';
-import {dirname, join} from 'node:path';
+import {fileURLToPath, parse} from 'node:url';
+import {dirname, join, basename} from 'node:path';
 import {tmpdir} from 'node:os';
 import {randomBytes} from 'node:crypto';
 
@@ -25,7 +25,7 @@ import {
   execPromise,
   s3KeyExists,
 } from './utils.js';
-import {getPtauName, downloadPtau} from './ptau.js';
+import {getPtauName, downloadPtau, downloadFile} from './ptau.js';
 import {StatusReporter} from './StatusReporter.js';
 import {
   SNARKJS_VERSIONS,
@@ -71,16 +71,14 @@ export async function build(event, options) {
   // Be sure to put error messages in the status log
   try {
     // bn128 primes are standard from polygon hermez but other primes are generated on the fly so they must be included in the package
-    const generatePtau = event.payload.prime !== 'bn128';
     const forcePtauSize = event.payload.ptauSize;
     const dirPkg = join(tmpdir(), pkgName);
-    const dirPtau = !generatePtau ? tmpdir() : join(dirPkg, 'ptau');
+    const dirPtau = tmpdir();
     const dirCircuits = join(dirPkg, 'circuits');
     const dirBuild = join(dirPkg, 'build');
     mkdirSync(dirPkg);
     mkdirSync(dirCircuits);
     mkdirSync(dirBuild);
-    if(generatePtau) mkdirSync(dirPtau);
 
     for(let file of Object.keys(event.payload.files)) {
       mkdirpSync(dirname(join(dirCircuits, file)));
@@ -146,30 +144,25 @@ export async function build(event, options) {
     status.startMemoryLogs(10000);
 
     let ptauPath;
-    // TODO provide method to supply a ptau file
-    if(generatePtau) {
-      const circuitInfo = await circomkit.info(BUILD_NAME);
-      // smallest p such that 2^p >= n
-      let ptauSize = forcePtauSize || Math.ceil(Math.log2(circuitInfo.constraints));
-      if(ptauSize < 8) ptauSize = 8;
-      if(ptauSize > 28) throw new Error('too_many_constraints');
-      const ptauName = `generated_${ptauSize}.ptau`;
-      ptauPath = circomkit.path.ofPtau(ptauName);
-      await status.log(`Generating PTAU of size 2^${ptauSize} with random entropy...`);
-      const initPtau = join(tmpdir(), 'init.ptau');
-      // TODO support generating PTAUs for other primes
-//       await snarkjs.powersOfTau.newAccumulator(event.payload.prime, ptauSize, initPtau, circomkit.log);
-      console.error('NYI: Generating PTAU');
-      process.exit(1);
-    } else if(forcePtauSize) {
-      if(isNaN(forcePtauSize) || forcePtauSize < 8 || forcePtauSize > 28)
-        throw new error('invalid_ptau_size');
-      const ptauName = getPtauName(forcePtauSize);
-      ptauPath = circomkit.path.ofPtau(ptauName);
-      await status.log(`Downloading ${ptauName}...`);
-      await downloadPtau(ptauName, ptauPath);
+    if(forcePtauSize) {
+      if(isNaN(forcePtauSize) && typeof forcePtauSize === 'string' && forcePtauSize.startsWith('https')) {
+        // Forcing a specific supplied PTAU file from https download
+        const ptauName = basename(parse(forcePtauSize).pathname);
+        ptauPath = circomkit.path.ofPtau(ptauName);
+        await status.log(`Downloading ${forcePtauSize}...`);
+        await downloadFile(forcePtauSize, ptauPath);
+      } else {
+        // Forcing a specific PTAU size using the default hermez/zkevm ceremony
+        if(isNaN(forcePtauSize) || forcePtauSize < 8 || forcePtauSize > 28)
+          throw new Error('invalid_ptau_size');
+        const ptauName = getPtauName(forcePtauSize);
+        ptauPath = circomkit.path.ofPtau(ptauName);
+        await status.log(`Downloading ${ptauName}...`);
+        await downloadPtau(ptauName, ptauPath);
+      }
     } else {
-      await status.log(`Downloading PTAU...`);
+      // Use default PTAU for this circuit size
+      await status.log(`Downloading hermez PTAU...`);
       ptauPath = await circomkit.ptau(BUILD_NAME);
     }
 
@@ -286,6 +279,7 @@ export async function build(event, options) {
       snarkjsVersion,
       protocol: event.payload.protocol,
       circuit: event.payload.circuit,
+      ptau: event.payload.ptauSize,
       soliditySize: statSync(contractPath).size,
       sourceSize: statSync(dirPkg + '-source.zip').size,
       pkgSize: statSync(dirPkg + '.zip').size,

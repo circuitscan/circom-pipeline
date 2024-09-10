@@ -35,16 +35,34 @@ export function getPtauName(p) {
  * @param ptauPath where to save the file
  * @returns path to downloaded PTAU file
  */
-// TODO reject on failure?
 export function downloadPtau(ptauName, ptauPath) {
-  const file = createWriteStream(ptauPath);
-  return new Promise(resolve => {
-    get(`${PTAU_URL_BASE}/${ptauName}`, response => {
+  return downloadFile(`${PTAU_URL_BASE}/${ptauName}`, ptauPath);
+}
+
+export function downloadFile(url, saveTo) {
+  const file = createWriteStream(saveTo);
+  return new Promise((resolve, reject) => {
+    const request = get(url, response => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
+        return;
+      }
+
       response.pipe(file);
+
       file.on('finish', () => {
-        file.close();
-        resolve(ptauPath);
+        file.close(() => resolve(saveTo));
       });
+    });
+
+    request.on('error', (err) => {
+      // Handle errors during the request
+      reject(err);
+    });
+
+    file.on('error', (err) => {
+      // Handle file stream errors
+      reject(err);
     });
   });
 }
