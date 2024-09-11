@@ -1,5 +1,9 @@
 import { uploadJsonToS3, getDiskUsage } from './utils.js';
 
+async function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // For small logs
 export class StatusReporter {
   constructor(bucket, key) {
@@ -7,7 +11,9 @@ export class StatusReporter {
     this.key = key;
     this.logs = [];
     this.memoryInterval = null;
-    this.lastUploadTime = 0; // Tracks last time uploadJsonToS3 was called
+    this.uploadInterval = null;
+    this.uploading = false;
+    this.lastUploadLen = 0;
   }
 
   startMemoryLogs(timeout) {
@@ -27,21 +33,34 @@ export class StatusReporter {
     }
   }
 
-  async log(msg, data) {
-    const currentTime = Date.now();
+  startUploading(timeout) {
+    if (this.uploading) throw new Error('ALREADY_UPLOADING');
+    this.uploading = true;
+    this.uploadInterval = setInterval(async () => {
+      if(!this.uploading) clearInterval(this.uploadInterval);
+      if(this.logs.length > this.lastUploadLen) {
+        this.lastUploadLen = this.logs.length;
+        await uploadJsonToS3(this.bucket, this.key, this.logs);
+      }
+      this.uploadInterval = null;
+    }, timeout);
+  }
 
+  async stopUploading() {
+    this.uploading = false;
+    while(this.uploadInterval !== null) {
+      await delay(1000);
+    }
+  }
+
+  log(msg, data) {
     // Add log entry
     this.logs.push({
       msg,
       data,
       time: process.uptime(),
     });
-
-    // Check if 5 seconds have passed since last upload
-    if (currentTime - this.lastUploadTime >= 5000) {
-      await uploadJsonToS3(this.bucket, this.key, this.logs);
-      this.lastUploadTime = currentTime; // Update the last upload time
-    }
   }
+
 }
 

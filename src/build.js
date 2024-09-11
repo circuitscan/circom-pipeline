@@ -62,11 +62,19 @@ export async function build(event, options) {
     dictionaries: [adjectives, colors, animals],
     separator: '-',
   })}`;
+  if(event.payload.circuit.file === `test/${BUILD_NAME}`) {
+    // This is the path that will be used for the main component
+    // So move this file to a slightly different filename
+    event.payload.circuit.file = `test/${BUILD_NAME}.og`;
+    event.payload.files[`test/${BUILD_NAME}.og.circom`] =
+      event.payload.files[`test/${BUILD_NAME}.circom`];
+    delete event.payload.files[`test/${BUILD_NAME}.circom`];
+  }
   const status = new StatusReporter(process.env.BLOB_BUCKET, `status/${event.payload.requestId}.json`);
   const circomVersion = await execPromise(`${event.payload.circomPath} --version`);
-  await status.log(`Using ${circomVersion.stdout}`);
-  await status.log(`Using snarkjs@${snarkjsPkg.version}`);
-  await status.log(`Compiling ${pkgName}...`);
+  status.log(`Using ${circomVersion.stdout}`);
+  status.log(`Using snarkjs@${snarkjsPkg.version}`);
+  status.log(`Compiling ${pkgName}...`);
 
   // Be sure to put error messages in the status log
   try {
@@ -108,22 +116,22 @@ export async function build(event, options) {
     const circomkit = new Circomkit(config);
     // Redirect logs to status
     circomkit.log = async (msg) => {
-      await status.log('Circomkit Log', { msg });
+      status.log('Circomkit Log', { msg });
     };
     circomkit.log.debug = async (msg) => {
-      await status.log('Circomkit Debug Log', { msg });
+      status.log('Circomkit Debug Log', { msg });
     };
     circomkit.log.info = async (msg) => {
-      await status.log('Circomkit Info Log', { msg });
+      status.log('Circomkit Info Log', { msg });
     };
     circomkit.log.warn = async (msg) => {
-      await status.log('Circomkit Warn Log', { msg });
+      status.log('Circomkit Warn Log', { msg });
     };
     circomkit.log.error = async (msg) => {
-      await status.log('Circomkit Error Log', { msg });
+      status.log('Circomkit Error Log', { msg });
     };
     circomkit.log.trace = async (msg) => {
-      await status.log('Circomkit Trace Log', { msg });
+      status.log('Circomkit Trace Log', { msg });
     };
     const wasmPath = join('build', BUILD_NAME, BUILD_NAME + '_js', BUILD_NAME + '.wasm');
     const pkeyPath = join('build', BUILD_NAME, event.payload.protocol + '_pkey.zkey');
@@ -138,10 +146,11 @@ export async function build(event, options) {
     }, null, 2));
     const compilePromise = circomkit.compile(BUILD_NAME, event.payload.circuit);
     monitorProcessMemory(event.payload.circomPath, 10000, async (memoryUsage) => {
-      await status.log(`Circom memory usage`, { memoryUsage });
+      status.log(`Circom memory usage`, { memoryUsage });
     });
     await compilePromise;
     status.startMemoryLogs(10000);
+    status.startUploading(5000);
 
     let ptauPath;
     if(forcePtauSize) {
@@ -149,7 +158,7 @@ export async function build(event, options) {
         // Forcing a specific supplied PTAU file from https download
         const ptauName = basename(parse(forcePtauSize).pathname);
         ptauPath = circomkit.path.ofPtau(ptauName);
-        await status.log(`Downloading ${forcePtauSize}...`);
+        status.log(`Downloading ${forcePtauSize}...`);
         await downloadFile(forcePtauSize, ptauPath);
       } else {
         // Forcing a specific PTAU size using the default hermez/zkevm ceremony
@@ -157,12 +166,12 @@ export async function build(event, options) {
           throw new Error('invalid_ptau_size');
         const ptauName = getPtauName(forcePtauSize);
         ptauPath = circomkit.path.ofPtau(ptauName);
-        await status.log(`Downloading ${ptauName}...`);
+        status.log(`Downloading ${ptauName}...`);
         await downloadPtau(ptauName, ptauPath);
       }
     } else {
       // Use default PTAU for this circuit size
-      await status.log(`Downloading hermez PTAU...`);
+      status.log(`Downloading hermez PTAU...`);
       ptauPath = await circomkit.ptau(BUILD_NAME);
     }
 
@@ -172,7 +181,7 @@ export async function build(event, options) {
       let pkeyData;
       if(hasHttpsZkey) {
         // Large zkeys fetched over HTTP
-        await status.log(`Downloading finalZkey ${event.payload.finalZkey}...`);
+        status.log(`Downloading finalZkey ${event.payload.finalZkey}...`);
         await downloadBinaryFile(event.payload.finalZkey, fullPkeyPath);
       } else {
         // Small ones can be sent base64 encoded
@@ -180,7 +189,7 @@ export async function build(event, options) {
         writeFileSync(fullPkeyPath, pkeyData);
       }
       // Verify the setup
-      await status.log(`Verifying finalZkey...`);
+      status.log(`Verifying finalZkey...`);
       const result = await snarkjs.zKey.verifyFromR1cs(
         join(dirBuild, BUILD_NAME, BUILD_NAME + '.r1cs'),
         ptauPath,
@@ -188,14 +197,14 @@ export async function build(event, options) {
         circomkit.log,
       );
       if(!result) {
-        await status.log(`Invalid finalZkey!`);
+        status.log(`Invalid finalZkey!`);
         throw new Error('invalid_finalZkey');
       }
     } else {
       // This section adapted from circomkit so it can run using custom snarkjs version
       if(event.payload.protocol === 'groth16') {
         // Groth16 needs a circuit specific setup
-        await status.log(`Groth16 setup with random entropy...`);
+        status.log(`Groth16 setup with random entropy...`);
 
         // generate genesis zKey
         let curZkey = join(dirBuild, BUILD_NAME, 'step0.zkey');
@@ -221,14 +230,14 @@ export async function build(event, options) {
         // finally, rename the resulting key to pkey
         renameSync(curZkey, fullPkeyPath);
       } else {
-        await status.log(`Circuit setup...`);
+        status.log(`Circuit setup...`);
         // PLONK or FFLONK don't need specific setup
         await snarkjs[event.payload.protocol].setup(r1csPath, ptauPath, fullPkeyPath);
       }
     }
 
     // export verification key
-    await status.log(`Exporting verification key and solidity verifier...`);
+    status.log(`Exporting verification key and solidity verifier...`);
     const vkey = JSON.stringify(await snarkjs.zKey.exportVerificationKey(fullPkeyPath), null, 2);
     writeFileSync(join(dirPkg, vkeyPath), vkey);
 
@@ -248,7 +257,7 @@ export async function build(event, options) {
 
     writeFileSync(contractPath, contractCode);
 
-    await status.log(`Storing build artifacts...`);
+    status.log(`Storing build artifacts...`);
     // Include Javascript to generate and verify proofs
     const thisdir = dirname(fileURLToPath(import.meta.url));
     const templates = [ 'index.js', 'package.json', 'README.md' ];
@@ -287,10 +296,11 @@ export async function build(event, options) {
     }, null, 2));
     await uploadLargeFileToS3(`build/${pkgName}/info.json`, join(dirPkg, 'info.json'));
     status.stopMemoryLogs();
-    await status.log(`Complete.`);
+    status.log(`Complete.`);
+    await status.stopUploading();
   } catch(error) {
     // TODO error data should be passed as data parameter so cli can halt on error
-    await status.log(error.toString());
+    status.log(error.toString());
     throw error;
   }
 
