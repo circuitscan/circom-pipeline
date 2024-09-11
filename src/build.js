@@ -63,11 +63,13 @@ export async function build(event, options) {
     separator: '-',
   })}`;
   if(event.payload.circuit.file === `test/${BUILD_NAME}`) {
-    // This is the path that will be used for the main component
-    // So move this file to a slightly different filename
-    event.payload.circuit.file = `test/${BUILD_NAME}.og`;
-    event.payload.files[`test/${BUILD_NAME}.og.circom`] =
-      event.payload.files[`test/${BUILD_NAME}.circom`];
+    // This is an auto-generated main template source file from circuitscan
+    // Point the circuit to the actual source instead
+    // Otherwise it will be overwritten
+    const include = event.payload.files[`test/${BUILD_NAME}.circom`].code.match(/include "([^"]+)";/);
+    if(!include)
+      throw new Error('invalid_directory_structure');
+    event.payload.circuit.file = include[1].slice(3, -7);
     delete event.payload.files[`test/${BUILD_NAME}.circom`];
   }
   const status = new StatusReporter(process.env.BLOB_BUCKET, `status/${event.payload.requestId}.json`);
