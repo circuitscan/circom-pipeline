@@ -147,12 +147,12 @@ export async function build(event, options) {
       [circuitName]: event.payload.circuit,
     }, null, 2));
     const compilePromise = circomkit.compile(BUILD_NAME, event.payload.circuit);
+    status.startUploading(5000);
     monitorProcessMemory(event.payload.circomPath, 10000, async (memoryUsage) => {
       status.log(`Circom memory usage`, { memoryUsage });
     });
     await compilePromise;
     status.startMemoryLogs(10000);
-    status.startUploading(5000);
 
     let ptauPath;
     if(forcePtauSize) {
@@ -297,13 +297,14 @@ export async function build(event, options) {
       finalZKey: hasHttpsZkey ? event.payload.finalZkey : undefined,
     }, null, 2));
     await uploadLargeFileToS3(`build/${pkgName}/info.json`, join(dirPkg, 'info.json'));
-    status.stopMemoryLogs();
     status.log(`Complete.`);
-    await status.stopUploading();
   } catch(error) {
     // TODO error data should be passed as data parameter so cli can halt on error
     status.log(error.toString());
     throw error;
+  } finally {
+    status.stopMemoryLogs();
+    await status.stopUploading();
   }
 
   return {

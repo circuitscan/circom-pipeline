@@ -2,6 +2,7 @@ import {strictEqual} from 'node:assert';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
+import {randomBytes} from 'node:crypto';
 import fse from 'fs-extra';
 import hardhat from 'hardhat';
 import solc from 'solc';
@@ -27,7 +28,7 @@ const fileServers = [];
 const EVENTS = [
   {
     payload: {
-      requestId: 'abcdef',
+      requestId: randomBytes(16).toString('hex'),
       action: 'build',
       files: {
         'multiplier.circom': {
@@ -36,6 +37,7 @@ const EVENTS = [
       },
       circomPath: 'circom-v2.1.8',
       protocol: 'plonk',
+      prime: 'bn128',
       circuit: {
         file: 'multiplier',
         template: 'Multiplier',
@@ -46,7 +48,7 @@ const EVENTS = [
   },
   {
     payload: {
-      requestId: 'abcdef',
+      requestId: randomBytes(16).toString('hex'),
       action: 'build',
       files: {
         'multiplier.circom': {
@@ -55,6 +57,7 @@ const EVENTS = [
       },
       circomPath: 'circom-v2.1.8',
       protocol: 'fflonk',
+      prime: 'bn128',
       circuit: {
         file: 'multiplier',
         template: 'Multiplier',
@@ -65,7 +68,7 @@ const EVENTS = [
   },
   {
     payload: {
-      requestId: 'abcdef',
+      requestId: randomBytes(16).toString('hex'),
       action: 'build',
       files: {
         'multiplier.circom': {
@@ -74,6 +77,7 @@ const EVENTS = [
       },
       circomPath: 'circom-v2.1.8',
       protocol: 'groth16',
+      prime: 'bn128',
       circuit: {
         file: 'multiplier',
         template: 'Multiplier',
@@ -84,7 +88,7 @@ const EVENTS = [
   },
   {
     payload: {
-      requestId: 'abcdef',
+      requestId: randomBytes(16).toString('hex'),
       action: 'build',
       files: {
         'multiplier.circom': {
@@ -93,6 +97,8 @@ const EVENTS = [
       },
       circomPath: 'circom-v2.1.8',
       protocol: 'groth16',
+      optimization: 1,
+      prime: 'bn128',
       finalZkey: readFileSync('test/test.zkey').toString('base64'),
       circuit: {
         file: 'multiplier',
@@ -109,7 +115,7 @@ const EVENTS = [
     const fileServerPort = await fileServer.start();
     return {
       payload: {
-        requestId: 'abcdef',
+        requestId: randomBytes(16).toString('hex'),
         action: 'build',
         files: {
           'multiplier.circom': {
@@ -118,6 +124,8 @@ const EVENTS = [
         },
         circomPath: 'circom-v2.1.8',
         protocol: 'groth16',
+        optimization: 1,
+        prime: 'bn128',
         finalZkey: `https://localhost:${fileServerPort}/`,
         circuit: {
           file: 'multiplier',
@@ -131,11 +139,13 @@ const EVENTS = [
   {
     test: {
       checkFail(status) {
-        return status[status.length-1].msg === 'Invalid finalZkey!';
+        for(let i = status.length - 1; i > -1; i--) {
+          if(status[i].msg.includes('invalid_finalZkey')) return true;
+        }
       },
     },
     payload: {
-      requestId: 'abcdef',
+      requestId: randomBytes(16).toString('hex'),
       action: 'build',
       files: {
         'multiplier.circom': {
@@ -144,6 +154,8 @@ const EVENTS = [
       },
       circomPath: 'circom-v2.1.8',
       protocol: 'groth16',
+      optimization: 1,
+      prime: 'bn128',
       finalZkey: readFileSync('test/test-fail.zkey').toString('base64'),
       circuit: {
         file: 'multiplier',
@@ -168,7 +180,7 @@ describe('Lambda Function', function () {
 
     if(typeof EVENT === 'function') EVENT = await EVENT();
 
-    const result = await handler(EVENT);
+    const result = await handler(EVENT, { ignoreApiKey: true });
     if(('test' in EVENT) && (typeof EVENT.test.checkFail === 'function')) {
       await delay(5000); // give time for s3 to be correct
       const status = await (await fetch(`${process.env.BLOB_URL}status/${EVENT.payload.requestId}.json`)).json();

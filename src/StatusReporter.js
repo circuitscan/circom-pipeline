@@ -1,6 +1,6 @@
 import { uploadJsonToS3, getDiskUsage } from './utils.js';
 
-async function delay(ms) {
+export async function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -37,12 +37,17 @@ export class StatusReporter {
     if (this.uploading) throw new Error('ALREADY_UPLOADING');
     this.uploading = true;
     this.uploadInterval = setInterval(async () => {
-      if(!this.uploading) clearInterval(this.uploadInterval);
+      if(!this.uploading) {
+        clearInterval(this.uploadInterval);
+      }
       if(this.logs.length > this.lastUploadLen) {
         this.lastUploadLen = this.logs.length;
         await uploadJsonToS3(this.bucket, this.key, this.logs);
       }
-      this.uploadInterval = null;
+      // After upload finishes, so it's safe to quit
+      if(!this.uploading) {
+        this.uploadInterval = null;
+      }
     }, timeout);
   }
 
