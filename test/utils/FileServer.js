@@ -59,7 +59,6 @@ export class FileServer {
 
       server.listen(0, () => {
         const port = server.address().port;
-        console.log(`Server listening on port ${port}`);
         this.server = server;  // Store the server instance for potential later reference
         resolve(port);
       });

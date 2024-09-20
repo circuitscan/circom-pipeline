@@ -1,4 +1,4 @@
-# Circom Compiler Lambda Docker Container
+# Circom Compiler pipeline
 
 Input a Circom circuit source and compiler configuration to generate (and upload to S3) zip of sources, Solidity verifier, and zip with build artifacts and development library:
 

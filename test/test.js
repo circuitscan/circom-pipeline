@@ -9,18 +9,12 @@ import solc from 'solc';
 import { S3Client, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 
 import {FileServer} from './utils/FileServer.js';
+import {MockStatusReporter} from './mock/MockStatusReporter.js';
 
-import {handler} from '../index.js';
-import {BUILD_NAME} from '../src/build.js';
+import circomPipeline, {BUILD_NAME} from '../src/index.js';
 
 const s3Client = new S3Client({
-  // use alternate env var names for lambda compatibility
-  region: process.env.BB_REGION,
-  credentials: {
-    accessKeyId: process.env.BB_ACCESS_KEY_ID,
-    secretAccessKey: process.env.BB_SECRET_ACCESS_KEY,
-  },
-  endpoint: process.env.BB_ENDPOINT,
+  region: process.env.AWS_REGION,
 });
 
 const fileServers = [];
@@ -138,9 +132,10 @@ const EVENTS = [
   },
   {
     test: {
-      checkFail(status) {
+      checkFail(status, error) {
+        if(error.message !== 'invalid_finalZkey') return false;
         for(let i = status.length - 1; i > -1; i--) {
-          if(status[i].msg.includes('invalid_finalZkey')) return true;
+          if(status[i].msg.includes('Invalid finalZkey!')) return true;
         }
       },
     },
@@ -167,10 +162,8 @@ const EVENTS = [
   },
 ];
 
-describe('Lambda Function', function () {
+describe('Circom pipeline', function () {
   after(async () => {
-    // TODO having >1 snarkjs version in process results in this global being overwritten
-    await globalThis.curve_bn128.terminate();
     fileServers.forEach(server => server.server.close());
   });
 
@@ -180,22 +173,24 @@ describe('Lambda Function', function () {
 
     if(typeof EVENT === 'function') EVENT = await EVENT();
 
-    const result = await handler(EVENT, { ignoreApiKey: true });
-    if(('test' in EVENT) && (typeof EVENT.test.checkFail === 'function')) {
-      await delay(5000); // give time for s3 to be correct
-      const status = await (await fetch(`${process.env.BLOB_URL}status/${EVENT.payload.requestId}.json`)).json();
-      strictEqual(EVENT.test.checkFail(status), true);
-      return;
+    const status = new MockStatusReporter;
+    let pkgName;
+    try {
+      pkgName = await circomPipeline(EVENT, { status });
+    } catch(error) {
+      if(('test' in EVENT) && (typeof EVENT.test.checkFail === 'function')) {
+        strictEqual(EVENT.test.checkFail(status.logs, error), true);
+        return;
+      }
+      throw error;
     }
 
-    strictEqual(result.statusCode, 200);
-    const body = JSON.parse(result.body);
-    const dirPkg = join(tmpdir(), body.pkgName);
-    const newPath = join('node_modules', body.pkgName);
+    const dirPkg = join(tmpdir(), pkgName);
+    const newPath = join('node_modules', pkgName);
     // Node won't import from outside this directory
     fse.moveSync(dirPkg, newPath);
 
-    const {prove, verify} = await import(body.pkgName);
+    const {prove, verify} = await import(pkgName);
 
     const {proof, calldata} = await prove({ in: [3,4] });
 
@@ -238,10 +233,10 @@ describe('Lambda Function', function () {
     fse.removeSync(newPath);
     // Cleanup S3
     await deleteS3Keys([
-      body.pkgName + '/source.zip',
-      body.pkgName + '/verifier.sol',
-      body.pkgName + '/pkg.zip',
-      body.pkgName + '/info.json',
+      pkgName + '/source.zip',
+      pkgName + '/verifier.sol',
+      pkgName + '/pkg.zip',
+      pkgName + '/info.json',
     ]);
 
   })});
@@ -263,7 +258,6 @@ async function deleteS3Keys(keys) {
 
   try {
     const data = await s3Client.send(new DeleteObjectsCommand(deleteParams));
-    console.log("Delete operation completed successfully:", data);
   } catch (error) {
     console.error("Error deleting objects:", error);
     throw error;

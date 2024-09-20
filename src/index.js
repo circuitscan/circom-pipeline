@@ -13,20 +13,17 @@ import {tmpdir} from 'node:os';
 import {randomBytes} from 'node:crypto';
 
 import {Circomkit} from 'circomkit';
-import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
 
 import {
-  executeCommand,
   downloadBinaryFile,
   uploadLargeFileToS3,
   zipDirectory,
   mkdirpSync,
   monitorProcessMemory,
   execPromise,
-  s3KeyExists,
-} from './utils.js';
+  uniqueName,
+} from 'circuitscan-pipeline-runner';
 import {getPtauName, downloadPtau, downloadFile} from './ptau.js';
-import {StatusReporter} from './StatusReporter.js';
 import {
   SNARKJS_VERSIONS,
   CIRCOM_VERSIONS,
@@ -35,52 +32,46 @@ import {
 export const BUILD_NAME = 'verify_circuit';
 const HARDHAT_IMPORT = 'import "hardhat/console.sol";';
 
-export async function build(event, options) {
-  if(!/^[a-zA-Z0-9]{6,40}$/.test(event.payload.requestId))
-    throw new Error('invalid_requestId');
-  if(!options.ignoreApiKey && await s3KeyExists(process.env.BLOB_BUCKET, `payload/${event.payload.requestId}.json`))
-    throw new Error('duplicate_requestId');
-  const circuitName = event.payload.circuit.template.toLowerCase();
-  const snarkjsVersion = event.payload.snarkjsVersion || SNARKJS_VERSIONS[0];
-  if(SNARKJS_VERSIONS.indexOf(snarkjsVersion) === -1)
-    throw new Error('invalid_snarkjs_version');
-  const snarkjsPkgName = `snarkjs-v${snarkjsVersion}`;
-  const snarkjs = await import(snarkjsPkgName);
-  const snarkjsPkg = JSON.parse(readFileSync(`node_modules/${snarkjsPkgName}/package.json`, 'utf8'));
-  if(['groth16', 'fflonk', 'plonk'].indexOf(event.payload.protocol) === -1)
-    throw new Error('invalid_protocol');
-  if(typeof event.payload.files !== 'object')
-    throw new Error('invalid_files');
-  if(!event.payload.circomPath
-      || !event.payload.circomPath.startsWith('circom-v')
-      || CIRCOM_VERSIONS.indexOf(event.payload.circomPath.slice(8)) === -1)
-    throw new Error('invalid_circomPath')
-  if(typeof event.payload.circuit !== 'object')
-    throw new Error('invalid_circuit');
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-  const pkgName = `${circuitName}-${uniqueNamesGenerator({
-    dictionaries: [adjectives, colors, animals],
-    separator: '-',
-  })}`;
-  if(event.payload.circuit.file === `test/${BUILD_NAME}`) {
-    // This is an auto-generated main template source file from circuitscan
-    // Point the circuit to the actual source instead
-    // Otherwise it will be overwritten
-    const include = event.payload.files[`test/${BUILD_NAME}.circom`].code.match(/include "([^"]+)";/);
-    if(!include)
-      throw new Error('invalid_directory_structure');
-    event.payload.circuit.file = include[1].slice(3, -7);
-    delete event.payload.files[`test/${BUILD_NAME}.circom`];
-  }
-  const status = new StatusReporter(process.env.BLOB_BUCKET, `status/${event.payload.requestId}.json`);
-  const circomVersion = await execPromise(`${event.payload.circomPath} --version`);
-  status.log(`Using ${circomVersion.stdout}`);
-  status.log(`Using snarkjs@${snarkjsPkg.version}`);
-  status.log(`Compiling ${pkgName}...`);
-
-  // Be sure to put error messages in the status log
+export default async function(event, { status }) {
   try {
-    // bn128 primes are standard from polygon hermez but other primes are generated on the fly so they must be included in the package
+    const circuitName = event.payload.circuit.template.toLowerCase();
+    const snarkjsVersion = event.payload.snarkjsVersion || SNARKJS_VERSIONS[0];
+    if(SNARKJS_VERSIONS.indexOf(snarkjsVersion) === -1)
+      throw new Error('invalid_snarkjs_version');
+    const snarkjsPkgName = `snarkjs-v${snarkjsVersion}`;
+    const snarkjs = await import(snarkjsPkgName);
+    const snarkjsPkg = JSON.parse(readFileSync(`node_modules/${snarkjsPkgName}/package.json`, 'utf8'));
+    if(['groth16', 'fflonk', 'plonk'].indexOf(event.payload.protocol) === -1)
+      throw new Error('invalid_protocol');
+    if(typeof event.payload.files !== 'object')
+      throw new Error('invalid_files');
+    if(!event.payload.circomPath
+        || !event.payload.circomPath.startsWith('circom-v')
+        || CIRCOM_VERSIONS.indexOf(event.payload.circomPath.slice(8)) === -1)
+      throw new Error('invalid_circomPath')
+    if(typeof event.payload.circuit !== 'object')
+      throw new Error('invalid_circuit');
+
+    const pkgName = uniqueName(circuitName);
+
+    if(event.payload.circuit.file === `test/${BUILD_NAME}`) {
+      // This is an auto-generated main template source file from circuitscan
+      // Point the circuit to the actual source instead
+      // Otherwise it will be overwritten
+      const include = event.payload.files[`test/${BUILD_NAME}.circom`].code.match(/include "([^"]+)";/);
+      if(!include)
+        throw new Error('invalid_directory_structure');
+      event.payload.circuit.file = include[1].slice(3, -7);
+      delete event.payload.files[`test/${BUILD_NAME}.circom`];
+    }
+    // TODO download and save circom binary
+    const circomVersion = await execPromise(`${event.payload.circomPath} --version`);
+    status.log(`Using ${circomVersion.stdout}`);
+    status.log(`Using snarkjs@${snarkjsPkg.version}`);
+    status.log(`Compiling ${pkgName}...`);
+
     const forcePtauSize = event.payload.ptauSize;
     const dirPkg = join(tmpdir(), pkgName);
     const dirPtau = tmpdir();
@@ -147,12 +138,15 @@ export async function build(event, options) {
       [circuitName]: event.payload.circuit,
     }, null, 2));
     const compilePromise = circomkit.compile(BUILD_NAME, event.payload.circuit);
-    status.startUploading(5000);
-    monitorProcessMemory(event.payload.circomPath, 10000, async (memoryUsage) => {
-      status.log(`Circom memory usage`, { memoryUsage });
-    });
+    const cancelMemoryMonitor = monitorProcessMemory(
+      event.payload.circomPath,
+      10000,
+      async (memoryUsage) => {
+        status.log(`Circom memory usage`, { memoryUsage });
+      }
+    );
     await compilePromise;
-    status.startMemoryLogs(10000);
+    cancelMemoryMonitor();
 
     let ptauPath;
     if(forcePtauSize) {
@@ -244,7 +238,9 @@ export async function build(event, options) {
     writeFileSync(join(dirPkg, vkeyPath), vkey);
 
     // Export solidity verifier
-    const template = readFileSync(`./node_modules/${snarkjsPkgName}/templates/verifier_${event.payload.protocol}.sol.ejs`, 'utf-8');
+    const template = readFileSync(join(__dirname,
+      `../node_modules/${snarkjsPkgName}/templates/verifier_${event.payload.protocol}.sol.ejs`
+    ), 'utf-8');
 
     let contractCode = await snarkjs.zKey.exportSolidityVerifier(
       fullPkeyPath,
@@ -261,10 +257,9 @@ export async function build(event, options) {
 
     status.log(`Storing build artifacts...`);
     // Include Javascript to generate and verify proofs
-    const thisdir = dirname(fileURLToPath(import.meta.url));
     const templates = [ 'index.js', 'package.json', 'README.md' ];
     for(let template of templates) {
-      const content = readFileSync(join(thisdir, '..', 'template', template), {encoding: 'utf8'})
+      const content = readFileSync(join(__dirname, '..', 'template', template), {encoding: 'utf8'})
         .replaceAll('%%package_name%%', pkgName)
         .replaceAll('%%circuit_name%%', circuitName)
         .replaceAll('%%snarkjs_version%%', snarkjsVersion)
@@ -298,19 +293,20 @@ export async function build(event, options) {
     }, null, 2));
     await uploadLargeFileToS3(`build/${pkgName}/info.json`, join(dirPkg, 'info.json'));
     status.log(`Complete.`);
-  } catch(error) {
-    // TODO error data should be passed as data parameter so cli can halt on error
-    status.log(error.toString());
-    throw error;
-  } finally {
-    status.stopMemoryLogs();
-    await status.stopUploading();
-  }
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      pkgName,
-    }),
-  };
+    await exitCleanly();
+    return pkgName;
+  } catch(error) {
+    await exitCleanly();
+    throw error;
+  }
+}
+
+function exitCleanly() {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      globalThis.curve_bn128 && globalThis.curve_bn128.terminate();
+      resolve();
+    }, 1000);
+  });
 }
