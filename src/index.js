@@ -66,7 +66,6 @@ export default async function(event, { status }) {
       event.payload.circuit.file = include[1].slice(3, -7);
       delete event.payload.files[`test/${BUILD_NAME}.circom`];
     }
-    // TODO download and save circom binary
     const circomVersion = await execPromise(`${event.payload.circomPath} --version`);
     status.log(`Using ${circomVersion.stdout}`);
     status.log(`Using snarkjs@${snarkjsPkg.version}`);
