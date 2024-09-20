@@ -20,7 +20,7 @@
   "homepage": "https://github.com/circuitscan/circom-pipeline#readme",
   "dependencies": {
     "circomkit": "0.3.0",
-    "circuitscan-pipeline-runner": "0.0.1",
+    "circuitscan-pipeline-runner": "0.0.2",
     "snarkjs-v0.6.11": "npm:snarkjs@0.6.11",
     "snarkjs-v0.7.0": "npm:snarkjs@0.7.0",
     "snarkjs-v0.7.1": "npm:snarkjs@0.7.1",
