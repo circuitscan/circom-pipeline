@@ -9,8 +9,9 @@ export const SNARKJS_VERSIONS = [
   '0.6.11',
 ];
 
-// Keep synced with Dockerfile
+// Linux binary downloaded from https://github.com/iden3/circom/releases
 export const CIRCOM_VERSIONS = [
+  '2.2.0',
   '2.1.9',
   '2.1.8',
   '2.1.7',
