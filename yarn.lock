@@ -2728,10 +2728,10 @@ circomkit@0.3.0:
     commander "^12.0.0"
     loglevel "^1.8.1"
 
-circuitscan-pipeline-runner@0.0.3:
-  version "0.0.3"
-  resolved "https://registry.yarnpkg.com/circuitscan-pipeline-runner/-/circuitscan-pipeline-runner-0.0.3.tgz#fbfb3b3a8d338bbec5a0e978d6dd5a830cd29e83"
-  integrity sha512-rU5yzDUD8eZKsmbORFxPhTr9Q1zrXiWOURLXII1dtBu9Zc+aRVJwc7Na17cUJ+g2FTyAlKMm1ov0EyJy3g5XjA==
+circuitscan-pipeline-runner@0.0.8:
+  version "0.0.8"
+  resolved "https://registry.yarnpkg.com/circuitscan-pipeline-runner/-/circuitscan-pipeline-runner-0.0.8.tgz#a1badc1ba2b6d3c056cf576e33c350ab42c34ce3"
+  integrity sha512-1JtW7BC/JFKyPyFLcvKsjiw/zVtUcwN8uo0jwMMjJt+dAPSLQ/0X96iXWOvzIijYU90d+Yt+lSBaLolULfr66g==
   dependencies:
     "@aws-sdk/client-s3" "^3.576.0"
     "@aws-sdk/lib-storage" "^3.576.0"
