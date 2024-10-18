@@ -1,6 +1,7 @@
 
 // Keep synced with package.json
 export const SNARKJS_VERSIONS = [
+  '0.7.5',
   '0.7.4',
   '0.7.3',
   '0.7.2',

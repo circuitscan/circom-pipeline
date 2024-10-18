@@ -26,7 +26,8 @@
     "snarkjs-v0.7.1": "npm:snarkjs@0.7.1",
     "snarkjs-v0.7.2": "npm:snarkjs@0.7.2",
     "snarkjs-v0.7.3": "npm:snarkjs@0.7.3",
-    "snarkjs-v0.7.4": "npm:snarkjs@0.7.4"
+    "snarkjs-v0.7.4": "npm:snarkjs@0.7.4",
+    "snarkjs-v0.7.5": "npm:snarkjs@0.7.5"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
