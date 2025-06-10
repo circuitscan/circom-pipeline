@@ -92,6 +92,7 @@ export default async function(event, { status }) {
       circomPath: event.payload.circomPath,
       protocol: event.payload.protocol,
       prime: event.payload.prime,
+      cWitness: event.payload.cWitness,
       optimization: isNaN(event.payload.optimization) ? 2 : event.payload.optimization,
       verbose: true,
     };
