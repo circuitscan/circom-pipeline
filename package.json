@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/circuitscan/circom-pipeline#readme",
   "dependencies": {
-    "circomkit": "0.3.0",
+    "circomkit": "numtel/circomkit#skipWasm_build",
     "circuitscan-pipeline-runner": "0.0.8",
     "snarkjs-v0.6.11": "npm:snarkjs@0.6.11",
     "snarkjs-v0.7.0": "npm:snarkjs@0.7.0",
