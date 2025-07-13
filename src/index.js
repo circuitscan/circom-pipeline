@@ -93,7 +93,7 @@ export default async function(event, { status }) {
       protocol: event.payload.protocol,
       prime: event.payload.prime,
       cWitness: event.payload.cWitness,
-      skipWasm: event.payload.skipWasm,
+      wasmWitness: event.payload.wasmWitness,
       optimization: isNaN(event.payload.optimization) ? 2 : event.payload.optimization,
       verbose: true,
     };
