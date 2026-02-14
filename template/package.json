@@ -14,7 +14,7 @@
     "snarkjs": "%%snarkjs_version%%"
   },
   "devDependencies": {
-    "circomkit": "^0.3.2"
+    "circomkit": "^0.3.4"
   },
   "resolutions": {
     "web-worker": "1.2.0"

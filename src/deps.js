@@ -1,6 +1,7 @@
 
 // Keep synced with package.json
 export const SNARKJS_VERSIONS = [
+  '0.7.6',
   '0.7.5',
   '0.7.4',
   '0.7.3',
@@ -12,6 +13,7 @@ export const SNARKJS_VERSIONS = [
 
 // Linux binary downloaded from https://github.com/iden3/circom/releases
 export const CIRCOM_VERSIONS = [
+  '2.2.3',
   '2.2.2',
   '2.2.1',
   '2.2.0',
